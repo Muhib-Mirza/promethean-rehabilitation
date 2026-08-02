@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+model Patient {
+  id                Int      @id @default(autoincrement())
+  firstName         String
+  lastName          String
+  contactNumber     String
+  address           String
+  gender            String
+  profession        String
+  cnic              String   @unique
+  referredBy        String?
+  age               Int?
+  heightFeet        Float?
+  weightKg          Float?
+  bmi               Float?
+  bodyChartMarkings String?  @db.NVarChar(Max)
+  createdAt         DateTime
+
+  @@map("Patients")
+}
