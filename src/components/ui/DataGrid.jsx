@@ -98,12 +98,7 @@ export function DataGrid({
               >
                 {column.header}
               </th>
-            ))}
-            {actions && actions.length > 0 && (
-              <th className="w-12 px-4 py-3">
-                <span className="sr-only">Actions</span>
-              </th>
-            )}
+            ))}            
           </tr>
         </thead>
         <tbody>
@@ -134,15 +129,7 @@ export function DataGrid({
                   >
                     {column.render ? column.render(row) : row[column.key]}
                   </td>
-                ))}
-                {actions && actions.length > 0 && (
-                  <td
-                    className="px-4 py-3"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <RowActionsMenu row={row} actions={actions} />
-                  </td>
-                )}
+                ))}                
               </tr>
             ))
           )}
