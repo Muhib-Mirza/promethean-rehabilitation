@@ -22,3 +22,8 @@ export * from './enums.ts';
  * 
  */
 export type Patient = Prisma.PatientModel
+/**
+ * Model Prescription
+ * 
+ */
+export type Prescription = Prisma.PrescriptionModel

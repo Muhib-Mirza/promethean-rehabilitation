@@ -101,6 +101,7 @@ export function PatientsScreen({ patients }) {
         data={patients}
         loading={isRefreshing}
         actions={actions}
+        onRowClick={(row) => router.push(`/patients/${row.id}`)}
         emptyState={{
           icon: UsersIcon,
           title: "No patients yet",

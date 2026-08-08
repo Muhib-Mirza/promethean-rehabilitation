@@ -47,18 +47,60 @@ function useIdMap(src, width, height) {
   return idMap;
 }
 
-function BodyChartPanel({
-  title,
-  image,
-  idmapSrc,
-  viewBox,
-  markings,
-  activeRegion,
-  onRegionClick,
-}) {
+const POPUP_WIDTH = 190;
+const POPUP_HEIGHT = 56;
+
+function ColorPickerPopup({ x, y, containerSize, onSelect, onDismiss }) {
+  const popupRef = useRef(null);
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (popupRef.current && !popupRef.current.contains(event.target)) {
+        onDismiss();
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [onDismiss]);
+
+  const left = Math.min(Math.max(x - POPUP_WIDTH / 2, 4), containerSize.width - POPUP_WIDTH - 4);
+  const top = Math.min(Math.max(y - POPUP_HEIGHT - 12, 4), containerSize.height - POPUP_HEIGHT - 4);
+
+  return (
+    <div
+      ref={popupRef}
+      className="absolute z-20 flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+      style={{ left, top, width: POPUP_WIDTH }}
+    >
+      {MARKING_COLORS.map((color) => (
+        <button
+          key={color.value}
+          type="button"
+          title={color.name}
+          onClick={() => onSelect(color.value)}
+          className="h-6 w-6 rounded-full border border-black/10 transition-transform hover:scale-110"
+          style={{ backgroundColor: color.value }}
+        />
+      ))}
+      <button
+        type="button"
+        title="Clear marking"
+        onClick={() => onSelect(null)}
+        className="ml-auto text-xs text-zinc-500 underline hover:text-zinc-900 dark:hover:text-zinc-50"
+      >
+        Clear
+      </button>
+    </div>
+  );
+}
+
+function BodyChartPanel({ title, image, idmapSrc, viewBox, markings, onMark }) {
   const idMap = useIdMap(idmapSrc, viewBox.width, viewBox.height);
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const [hoveredRegion, setHoveredRegion] = useState(null);
+  const [picker, setPicker] = useState(null); // { region, x, y } | null
+  const activeRegion = picker?.region ?? null;
 
   useEffect(() => {
     if (!idMap || !canvasRef.current) return;
@@ -134,6 +176,7 @@ function BodyChartPanel({
         {title}
       </p>
       <div
+        ref={containerRef}
         className="relative mx-auto"
         style={{ maxWidth: viewBox.width, aspectRatio: `${viewBox.width} / ${viewBox.height}` }}
       >
@@ -152,7 +195,15 @@ function BodyChartPanel({
           className="absolute inset-0 h-full w-full cursor-pointer"
           onClick={(event) => {
             const region = regionAtEvent(event);
-            if (region) onRegionClick(region);
+            if (!region) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            setPicker({
+              region,
+              x: event.clientX - rect.left,
+              y: event.clientY - rect.top,
+              containerWidth: rect.width,
+              containerHeight: rect.height,
+            });
           }}
           onMouseMove={(event) => {
             const region = regionAtEvent(event);
@@ -160,67 +211,35 @@ function BodyChartPanel({
           }}
           onMouseLeave={() => setHoveredRegion(null)}
         />
+        {picker && (
+          <ColorPickerPopup
+            x={picker.x}
+            y={picker.y}
+            containerSize={{ width: picker.containerWidth, height: picker.containerHeight }}
+            onSelect={(color) => {
+              onMark(picker.region, color);
+              setPicker(null);
+            }}
+            onDismiss={() => setPicker(null)}
+          />
+        )}
       </div>
     </div>
   );
 }
 
 export function BodyChart({ markings, onChange }) {
-  const [activeRegion, setActiveRegion] = useState(null);
-
-  function handleColorSelect(color) {
-    if (activeRegion === null) return;
-    const next = markings.filter((m) => m.region !== activeRegion);
-    next.push({ region: activeRegion, color });
+  function handleMark(region, color) {
+    const next = markings.filter((m) => m.region !== region);
+    if (color) next.push({ region, color });
     onChange(next);
-  }
-
-  function handleClear() {
-    if (activeRegion === null) return;
-    onChange(markings.filter((m) => m.region !== activeRegion));
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900">
-        {activeRegion === null ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Click a numbered region on the diagram to mark it.
-          </p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-              Region {activeRegion}:
-            </span>
-            <div className="flex items-center gap-1.5">
-              {MARKING_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  title={color.name}
-                  onClick={() => handleColorSelect(color.value)}
-                  className="h-6 w-6 rounded-full border border-black/10 transition-transform hover:scale-110"
-                  style={{ backgroundColor: color.value }}
-                />
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={handleClear}
-              className="text-sm text-zinc-500 underline hover:text-zinc-900 dark:hover:text-zinc-50"
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveRegion(null)}
-              className="ml-auto text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400"
-            >
-              Done
-            </button>
-          </div>
-        )}
-      </div>
+      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        Click a numbered region on the diagram to mark it.
+      </p>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <BodyChartPanel
@@ -229,8 +248,7 @@ export function BodyChart({ markings, onChange }) {
           idmapSrc={FRONT_IDMAP}
           viewBox={FRONT_VIEWBOX}
           markings={markings}
-          activeRegion={activeRegion}
-          onRegionClick={setActiveRegion}
+          onMark={handleMark}
         />
         <BodyChartPanel
           title="Back"
@@ -238,8 +256,7 @@ export function BodyChart({ markings, onChange }) {
           idmapSrc={BACK_IDMAP}
           viewBox={BACK_VIEWBOX}
           markings={markings}
-          activeRegion={activeRegion}
-          onRegionClick={setActiveRegion}
+          onMark={handleMark}
         />
       </div>
     </div>

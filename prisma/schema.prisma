@@ -11,21 +11,38 @@ datasource db {
 }
 
 model Patient {
-  id                Int      @id @default(autoincrement())
+  id                Int           @id @default(autoincrement())
   firstName         String
   lastName          String
   contactNumber     String
   address           String
   gender            String
   profession        String
-  cnic              String   @unique
+  cnic              String        @unique
   referredBy        String?
   age               Int?
   heightFeet        Float?
   weightKg          Float?
   bmi               Float?
-  bodyChartMarkings String?  @db.NVarChar(Max)
+  bodyChartMarkings String?       @db.NVarChar(Max)
   createdAt         DateTime
+  prescription      Prescription?
 
   @@map("Patients")
+}
+
+// Digitized version of the "Promethean Rehabilitation" paper prescription
+// form (patient complaint + examination). One record per patient; every
+// field on the paper form (aside from patient identity fields already on
+// `Patient`) lives in `data` as JSON, mirroring how `bodyChartMarkings` is
+// stored above — the form has ~80 loosely-structured fields, so a typed
+// column per field isn't worth the migration churn.
+model Prescription {
+  id        Int      @id @default(autoincrement())
+  patientId Int      @unique
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  data      String   @db.NVarChar(Max)
+  updatedAt DateTime @updatedAt
+
+  @@map("Prescriptions")
 }

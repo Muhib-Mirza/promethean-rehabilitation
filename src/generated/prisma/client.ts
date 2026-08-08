@@ -46,3 +46,8 @@ export { Prisma }
  * 
  */
 export type Patient = Prisma.PatientModel
+/**
+ * Model Prescription
+ * 
+ */
+export type Prescription = Prisma.PrescriptionModel
