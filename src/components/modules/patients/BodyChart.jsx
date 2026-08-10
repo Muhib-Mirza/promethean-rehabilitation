@@ -15,6 +15,13 @@ import {
 const HOVER_TINT = [148, 163, 184]; // slate-400, shown on unmarked hover
 const ACTIVE_OUTLINE = [13, 148, 136]; // teal-600
 
+// Front and back use a shared display box (rather than each panel's own
+// image aspect ratio) so the two panels always render at identical pixel
+// dimensions — the source images differ by ~1% in intrinsic aspect ratio,
+// which is enough to be visible as "one panel bigger than the other" once
+// stretched across a grid column.
+const PANEL_ASPECT = `${FRONT_VIEWBOX.width} / ${FRONT_VIEWBOX.height}`;
+
 function hexToRgb(hex) {
   const value = parseInt(hex.slice(1), 16);
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
@@ -171,14 +178,14 @@ function BodyChartPanel({ title, image, idmapSrc, viewBox, markings, onMark }) {
   }
 
   return (
-    <div>
-      <p className="mb-2 text-center text-sm font-medium text-zinc-500 dark:text-zinc-400">
+    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <p className="mb-3 text-center text-sm font-semibold text-zinc-700 dark:text-zinc-300">
         {title}
       </p>
       <div
         ref={containerRef}
-        className="relative mx-auto"
-        style={{ maxWidth: viewBox.width, aspectRatio: `${viewBox.width} / ${viewBox.height}` }}
+        className="relative mx-auto w-full"
+        style={{ maxWidth: 420, aspectRatio: PANEL_ASPECT }}
       >
         <Image
           src={image}
