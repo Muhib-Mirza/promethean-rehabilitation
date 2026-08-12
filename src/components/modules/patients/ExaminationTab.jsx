@@ -3,6 +3,7 @@
 import { TextField } from "@/components/ui/TextField";
 import { TextAreaField } from "@/components/ui/TextAreaField";
 import { RadioGroupField } from "@/components/ui/RadioGroupField";
+import { SelectField } from "@/components/ui/SelectField";
 import { Checkbox } from "@/components/ui/Checkbox";
 import {
   YES_NO_OPTIONS,
@@ -11,6 +12,7 @@ import {
   CHANGE_OF_POSTURE_OPTIONS,
   LATERAL_OPTIONS,
   MECHANICAL_RESPONSE_GROUPS,
+  MECHANICAL_RESPONSE_LEVEL_OPTIONS,
   ASYMMETRY_ROWS,
   ASYMMETRY_COLUMNS,
   LABS_ITEMS,
@@ -173,16 +175,18 @@ export function ExaminationTab({ data, onChange }) {
                 {group.title}
               </p>
               <div className="space-y-3">
-                <TextField
+                <SelectField
                   label="Pretest Symptom"
+                  options={MECHANICAL_RESPONSE_LEVEL_OPTIONS}
                   value={examination.mechanicalResponse[group.key].pretest}
                   onChange={(e) => updateMechanical(group.key, "pretest", e.target.value)}
                 />
                 <div className="grid grid-cols-2 gap-3">
                   {group.rows.map((row) => (
-                    <TextField
+                    <SelectField
                       key={row.key}
                       label={row.label}
+                      options={MECHANICAL_RESPONSE_LEVEL_OPTIONS}
                       value={examination.mechanicalResponse[group.key][row.key]}
                       onChange={(e) => updateMechanical(group.key, row.key, e.target.value)}
                     />

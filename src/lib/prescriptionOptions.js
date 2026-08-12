@@ -31,6 +31,14 @@ export const STANDING_OPTIONS = ["Lordotic", "Neutral", "Kyphotic"];
 export const CHANGE_OF_POSTURE_OPTIONS = ["Better", "Worse", "No Effect"];
 export const LATERAL_OPTIONS = ["Right", "Left", "Nil"];
 
+export const MECHANICAL_RESPONSE_LEVEL_OPTIONS = [
+  "Nil",
+  "Mild",
+  "Moderate",
+  "Severe",
+  "Very Severe",
+];
+
 // Each "group" mirrors one bordered block of Pretest Symptom / movement / Rep
 // rows from the "Symptomatic and Mechanical Response" section of the form.
 export const MECHANICAL_RESPONSE_GROUPS = [
