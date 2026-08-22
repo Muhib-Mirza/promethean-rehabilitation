@@ -112,19 +112,47 @@ export const MECHANICAL_RESPONSE_GROUPS = [
   },
 ];
 
-export const ASYMMETRY_ROWS = [
-  { key: "atlasRotation", label: "Atlas Rotation" },
-  { key: "shoulderLevel", label: "Shoulder Level" },
-  { key: "pelvicLevel", label: "Pelvic Level" },
-  { key: "shoulderWeakness", label: "Shoulder Weakness" },
-  { key: "pelvicWeakness", label: "Pelvic Weakness" },
-];
+export const ASYMMETRY_ROWS = [{ key: "atlasRotation", label: "Atlas Rotation" }];
 
 export const ASYMMETRY_COLUMNS = [
   { key: "rightAnt", label: "Right Ant" },
   { key: "rightPost", label: "Right Post" },
   { key: "leftAnt", label: "Left Ant" },
   { key: "leftPost", label: "Left Post" },
+];
+
+// Shoulder/Pelvic Level: a 0-20 (0.5 steps) reading per side, rather than
+// the Right/Left Ant/Post checkbox grid used for the other asymmetry rows.
+export const LEVEL_ROWS = [
+  { key: "shoulderLevel", label: "Shoulder Level" },
+  { key: "pelvicLevel", label: "Pelvic Level" },
+];
+export const LEVEL_MIN = 0;
+export const LEVEL_MAX = 20;
+export const LEVEL_STEP = 0.5;
+
+// Shoulder/Pelvic Weakness: same Left/Right reading idea as LEVEL_ROWS, but
+// a 0-5 (whole-step) grading instead.
+export const WEAKNESS_ROWS = [
+  { key: "shoulderWeakness", label: "Shoulder Weakness" },
+  { key: "pelvicWeakness", label: "Pelvic Weakness" },
+];
+export const WEAKNESS_MIN = 0;
+export const WEAKNESS_MAX = 5;
+export const WEAKNESS_STEP = 1;
+
+export const GMFCS_OPTIONS = ["Level I", "Level II", "Level III", "Level IV", "Level V"];
+
+// Follow Up's Atlas Rotation is the same Ant/Post x Right/Left grid as the
+// Examination tab's Atlas Findings, just grouped as 2 rows (Ant, Post) x 2
+// columns (Right, Left) rather than 1 row x 4 columns.
+export const FOLLOW_UP_ATLAS_ROWS = [
+  { key: "ant", label: "Ant" },
+  { key: "post", label: "Post" },
+];
+export const FOLLOW_UP_ATLAS_COLUMNS = [
+  { key: "right", label: "Right" },
+  { key: "left", label: "Left" },
 ];
 
 export const LABS_ITEMS = [
@@ -159,7 +187,7 @@ export const LABS_ITEMS = [
   { id: 29, label: "Bone Scan Tc 99 MDP" },
 ];
 
-function emptyMechanicalResponse() {
+export function emptyMechanicalResponse() {
   return Object.fromEntries(
     MECHANICAL_RESPONSE_GROUPS.map((group) => [
       group.key,
@@ -168,13 +196,62 @@ function emptyMechanicalResponse() {
   );
 }
 
-function emptyAsymmetryGrid() {
+// Generic row x column boolean grid, shared by the Examination tab's Atlas
+// Findings (ASYMMETRY_ROWS/COLUMNS) and the Follow Up tab's Atlas Rotation
+// (FOLLOW_UP_ATLAS_ROWS/COLUMNS).
+export function emptyGrid(rows, columns) {
   return Object.fromEntries(
-    ASYMMETRY_ROWS.map((row) => [
-      row.key,
-      Object.fromEntries(ASYMMETRY_COLUMNS.map((col) => [col.key, false])),
-    ])
+    rows.map((row) => [row.key, Object.fromEntries(columns.map((col) => [col.key, false]))])
   );
+}
+
+function emptyAsymmetryGrid() {
+  return emptyGrid(ASYMMETRY_ROWS, ASYMMETRY_COLUMNS);
+}
+
+export function mergeGrid(rows, emptyGridValue, savedGrid) {
+  return Object.fromEntries(
+    rows.map((row) => [row.key, { ...emptyGridValue[row.key], ...savedGrid?.[row.key] }])
+  );
+}
+
+// Shared shape for LEVEL_ROWS and WEAKNESS_ROWS: a Left/Right reading per
+// row, each with its own numeric range.
+export function emptyLeftRightGroup(rows) {
+  return Object.fromEntries(rows.map((row) => [row.key, { left: "", right: "" }]));
+}
+
+export function mergeLeftRightGroup(rows, emptyGroup, savedGroup) {
+  return mergeGrid(rows, emptyGroup, savedGroup);
+}
+
+// One entry in the Follow Up tab's history — captured each time "Add new
+// Patient Follow Up" is submitted, so past entries stay untouched even as
+// the empty shape below gains fields later.
+export function emptyFollowUpEntry() {
+  return {
+    id: "",
+    date: "",
+    gmfcs: "",
+    atlasRotation: emptyGrid(FOLLOW_UP_ATLAS_ROWS, FOLLOW_UP_ATLAS_COLUMNS),
+    inclinometer: emptyLeftRightGroup(LEVEL_ROWS),
+    muscleTesting: emptyLeftRightGroup(WEAKNESS_ROWS),
+    mechanicalResponse: emptyMechanicalResponse(),
+  };
+}
+
+export function mergeFollowUpEntry(saved) {
+  const empty = emptyFollowUpEntry();
+  if (!saved || typeof saved !== "object") return empty;
+
+  return {
+    ...empty,
+    ...saved,
+    atlasRotation: mergeGrid(FOLLOW_UP_ATLAS_ROWS, empty.atlasRotation, saved.atlasRotation),
+    inclinometer: mergeLeftRightGroup(LEVEL_ROWS, empty.inclinometer, saved.inclinometer),
+    muscleTesting: mergeLeftRightGroup(WEAKNESS_ROWS, empty.muscleTesting, saved.muscleTesting),
+    mechanicalResponse: { ...empty.mechanicalResponse, ...saved.mechanicalResponse },
+  };
 }
 
 export function emptyPrescriptionData() {
@@ -218,9 +295,15 @@ export function emptyPrescriptionData() {
       },
       mechanicalResponse: emptyMechanicalResponse(),
       asymmetry: emptyAsymmetryGrid(),
+      levels: emptyLeftRightGroup(LEVEL_ROWS),
+      weakness: emptyLeftRightGroup(WEAKNESS_ROWS),
       labs: [],
       labsNotes: { mriSite: "", ctSite: "" },
+      // Free-text report detail per labs/radiology item (LABS_ITEMS id -> text),
+      // entered via the modal opened from each item's report-detail button.
+      labsReportDetails: {},
     },
+    followUps: [],
   };
 }
 
@@ -250,7 +333,18 @@ export function mergePrescriptionData(saved) {
         ...saved.examination?.mechanicalResponse,
       },
       asymmetry: { ...empty.examination.asymmetry, ...saved.examination?.asymmetry },
+      levels: mergeLeftRightGroup(LEVEL_ROWS, empty.examination.levels, saved.examination?.levels),
+      weakness: mergeLeftRightGroup(
+        WEAKNESS_ROWS,
+        empty.examination.weakness,
+        saved.examination?.weakness
+      ),
       labsNotes: { ...empty.examination.labsNotes, ...saved.examination?.labsNotes },
+      labsReportDetails: {
+        ...empty.examination.labsReportDetails,
+        ...saved.examination?.labsReportDetails,
+      },
     },
+    followUps: Array.isArray(saved.followUps) ? saved.followUps.map(mergeFollowUpEntry) : [],
   };
 }

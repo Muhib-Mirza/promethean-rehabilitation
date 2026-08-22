@@ -35,7 +35,8 @@ export function BodyChartModal({ open, onClose, patient, onSaved }) {
         body: JSON.stringify({ markings }),
       });
       if (!response.ok) {
-        showToast("Failed to save body chart. Please try again.");
+        const result = await response.json().catch(() => null);
+        showToast(result?.errors?.form ?? "Failed to save body chart. Please try again.");
         return;
       }
       onSaved?.();

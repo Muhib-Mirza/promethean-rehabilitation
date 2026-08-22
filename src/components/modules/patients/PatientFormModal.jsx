@@ -62,7 +62,7 @@ export function PatientFormModal({ open, onClose, patient, onSaved }) {
 
       if (!response.ok) {
         if (result.errors?.form) {
-          showToast("Something went wrong. Please try again.");
+          showToast(result.errors.form);
         } else if (result.errors) {
           setErrors(result.errors);
         } else {

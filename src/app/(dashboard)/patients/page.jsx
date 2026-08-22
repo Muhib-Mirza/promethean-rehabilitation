@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { PatientsScreen } from "@/components/modules/patients/PatientsScreen";
+// DEMO-DATA FALLBACK — remove this import along with src/mock-data/ once a
+// real database is connected (see src/mock-data/README.md).
+import { MOCK_PATIENTS } from "@/mock-data/patients";
 
 export const metadata = {
   title: "Patients | Promethean Rehabilitation",
@@ -11,13 +14,25 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const rows = await prisma.patient.findMany({
-    orderBy: { createdAt: "desc" },
-  });
-  const patients = rows.map((row) => ({
-    ...row,
-    createdAt: row.createdAt.toISOString(),
-  }));
+  let patients;
+  let isMockData = false;
 
-  return <PatientsScreen patients={patients} />;
+  try {
+    const rows = await prisma.patient.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    patients = rows.map((row) => ({
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+    }));
+  } catch {
+    // DEMO-DATA FALLBACK — see src/mock-data/README.md to remove.
+    isMockData = true;
+    patients = MOCK_PATIENTS.map((row) => ({
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+    }));
+  }
+
+  return <PatientsScreen patients={patients} isMockData={isMockData} />;
 }

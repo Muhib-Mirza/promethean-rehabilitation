@@ -10,6 +10,19 @@ import { AddPatientButton } from "@/components/modules/patients/AddPatientButton
 import { PatientFormModal } from "@/components/modules/patients/PatientFormModal";
 import { BodyChartModal } from "@/components/modules/patients/BodyChartModal";
 import { useToast } from "@/components/ui/Toast";
+// DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
+// database is connected (see src/mock-data/README.md).
+import { DemoModeBanner } from "@/mock-data/DemoModeBanner";
+
+// `toLocaleDateString()` with no arguments uses the runtime's default
+// locale, which can differ between the Node server (SSR) and the browser
+// (hydration) and trigger a hydration mismatch. Pin an explicit locale so
+// the output is identical in both environments.
+const CREATED_AT_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
 
 const columns = [
   {
@@ -33,11 +46,11 @@ const columns = [
   {
     key: "createdAt",
     header: "Created At",
-    render: (row) => new Date(row.createdAt).toLocaleDateString(),
+    render: (row) => CREATED_AT_FORMATTER.format(new Date(row.createdAt)),
   },
 ];
 
-export function PatientsScreen({ patients }) {
+export function PatientsScreen({ patients, isMockData = false }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [isRefreshing, startRefresh] = useTransition();
@@ -57,7 +70,8 @@ export function PatientsScreen({ patients }) {
         method: "DELETE",
       });
       if (!response.ok) {
-        showToast("Failed to delete patient. Please try again.");
+        const result = await response.json().catch(() => null);
+        showToast(result?.errors?.form ?? "Failed to delete patient. Please try again.");
         return;
       }
       setDeletingPatient(null);
@@ -90,6 +104,8 @@ export function PatientsScreen({ patients }) {
 
   return (
     <div>
+      {isMockData && <DemoModeBanner />}
+
       <PageHeader
         title="Patients"
         description="Manage patient records, intake, and rehabilitation history."

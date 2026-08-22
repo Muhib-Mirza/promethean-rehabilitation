@@ -9,12 +9,17 @@ import { useToast } from "@/components/ui/Toast";
 import { PatientInfoTab } from "@/components/modules/patients/PatientInfoTab";
 import { ComplaintTab } from "@/components/modules/patients/ComplaintTab";
 import { ExaminationTab } from "@/components/modules/patients/ExaminationTab";
+import { FollowUpTab } from "@/components/modules/patients/FollowUpTab";
 import { mergePrescriptionData } from "@/lib/prescriptionOptions";
+// DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
+// database is connected (see src/mock-data/README.md).
+import { DemoModeBanner } from "@/mock-data/DemoModeBanner";
 
 const TABS = [
   { key: "info", label: "Patient Info" },
   { key: "complaint", label: "Patient Complaint" },
   { key: "examination", label: "Examination" },
+  { key: "followup", label: "Follow Up" },
 ];
 
 function parseData(prescription) {
@@ -26,7 +31,26 @@ function parseData(prescription) {
   }
 }
 
-export function PrescriptionScreen({ patient, prescription }) {
+// `toLocaleString()` with no arguments formats using the runtime's default
+// locale, which can differ between the Node server (SSR) and the browser
+// (hydration) — e.g. 24-hour vs 12-hour clock — causing a hydration
+// mismatch. Pinning an explicit locale and options makes the output
+// deterministic across both environments.
+const SAVED_AT_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+});
+
+function formatSavedAt(savedAt) {
+  return SAVED_AT_FORMATTER.format(new Date(savedAt));
+}
+
+export function PrescriptionScreen({ patient, prescription, isMockData = false }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("complaint");
@@ -66,6 +90,8 @@ export function PrescriptionScreen({ patient, prescription }) {
 
   return (
     <div>
+      {isMockData && <DemoModeBanner />}
+
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link
@@ -78,9 +104,7 @@ export function PrescriptionScreen({ patient, prescription }) {
             {patientInfo.firstName} {patientInfo.lastName} — Prescription
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {savedAt
-              ? `Last saved ${new Date(savedAt).toLocaleString()}`
-              : "Not saved yet"}
+            {savedAt ? `Last saved ${formatSavedAt(savedAt)}` : "Not saved yet"}
           </p>
         </div>
         {activeTab !== "info" && (
@@ -96,8 +120,10 @@ export function PrescriptionScreen({ patient, prescription }) {
         <PatientInfoTab patient={patientInfo} onSaved={handlePatientSaved} />
       ) : activeTab === "complaint" ? (
         <ComplaintTab patient={patientInfo} data={data} onChange={setData} />
-      ) : (
+      ) : activeTab === "examination" ? (
         <ExaminationTab data={data} onChange={setData} />
+      ) : (
+        <FollowUpTab data={data} onChange={setData} />
       )}
 
       {activeTab !== "info" && (

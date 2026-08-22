@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+// DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
+// database is connected (see src/mock-data/README.md).
+import { DEMO_MODE_MESSAGE, isDbConnectionError } from "@/mock-data/isDbUnavailable";
 
 export async function PUT(request, { params }) {
   const { id } = await params;
@@ -38,6 +41,10 @@ export async function PUT(request, { params }) {
         { status: 404 }
       );
     }
+    if (isDbConnectionError(error)) {
+      // DEMO-DATA FALLBACK — see src/mock-data/README.md to remove.
+      return NextResponse.json({ errors: { form: DEMO_MODE_MESSAGE } }, { status: 503 });
+    }
     console.error("Failed to update patient:", error);
     return NextResponse.json(
       { errors: { form: "Something went wrong. Please try again." } },
@@ -65,6 +72,10 @@ export async function PATCH(request, { params }) {
         { status: 404 }
       );
     }
+    if (isDbConnectionError(error)) {
+      // DEMO-DATA FALLBACK — see src/mock-data/README.md to remove.
+      return NextResponse.json({ errors: { form: DEMO_MODE_MESSAGE } }, { status: 503 });
+    }
     console.error("Failed to update body chart:", error);
     return NextResponse.json(
       { errors: { form: "Something went wrong. Please try again." } },
@@ -85,6 +96,10 @@ export async function DELETE(_request, { params }) {
         { errors: { form: "Patient not found." } },
         { status: 404 }
       );
+    }
+    if (isDbConnectionError(error)) {
+      // DEMO-DATA FALLBACK — see src/mock-data/README.md to remove.
+      return NextResponse.json({ errors: { form: DEMO_MODE_MESSAGE } }, { status: 503 });
     }
     console.error("Failed to delete patient:", error);
     return NextResponse.json(

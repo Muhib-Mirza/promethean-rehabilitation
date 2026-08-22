@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+// DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
+// database is connected (see src/mock-data/README.md).
+import { MOCK_PATIENTS } from "@/mock-data/patients";
+import { DEMO_MODE_MESSAGE, isDbConnectionError } from "@/mock-data/isDbUnavailable";
 
 export async function GET() {
   try {
@@ -8,6 +12,10 @@ export async function GET() {
     });
     return NextResponse.json({ patients });
   } catch (error) {
+    if (isDbConnectionError(error)) {
+      // DEMO-DATA FALLBACK — see src/mock-data/README.md to remove.
+      return NextResponse.json({ patients: MOCK_PATIENTS });
+    }
     console.error("Failed to fetch patients:", error);
     return NextResponse.json(
       { errors: { form: "Something went wrong. Please try again." } },
@@ -44,6 +52,10 @@ export async function POST(request) {
         { errors: { cnic: "A patient with this CNIC already exists." } },
         { status: 409 }
       );
+    }
+    if (isDbConnectionError(error)) {
+      // DEMO-DATA FALLBACK — see src/mock-data/README.md to remove.
+      return NextResponse.json({ errors: { form: DEMO_MODE_MESSAGE } }, { status: 503 });
     }
     console.error("Failed to create patient:", error);
     return NextResponse.json(

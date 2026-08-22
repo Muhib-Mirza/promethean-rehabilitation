@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+// DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
+// database is connected (see src/mock-data/README.md).
+import { DEMO_MODE_MESSAGE, isDbConnectionError } from "@/mock-data/isDbUnavailable";
 
 // Upserts the prescription in one round trip: most edits are to an existing
 // record, but the row is only created lazily on first save rather than at
@@ -24,6 +27,10 @@ export async function PUT(request, { params }) {
         { errors: { form: "Patient not found." } },
         { status: 404 }
       );
+    }
+    if (isDbConnectionError(error)) {
+      // DEMO-DATA FALLBACK — see src/mock-data/README.md to remove.
+      return NextResponse.json({ errors: { form: DEMO_MODE_MESSAGE } }, { status: 503 });
     }
     console.error("Failed to save prescription:", error);
     return NextResponse.json(

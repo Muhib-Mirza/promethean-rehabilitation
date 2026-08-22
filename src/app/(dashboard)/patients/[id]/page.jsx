@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { PrescriptionScreen } from "@/components/modules/patients/PrescriptionScreen";
+// DEMO-DATA FALLBACK — remove this import along with src/mock-data/ once a
+// real database is connected (see src/mock-data/README.md).
+import { getMockPatientById, MOCK_PRESCRIPTIONS } from "@/mock-data/patients";
 
 export const metadata = {
   title: "Prescription | Promethean Rehabilitation",
@@ -16,10 +19,21 @@ export default async function Page({ params }) {
   const patientId = Number(id);
   if (!Number.isInteger(patientId)) notFound();
 
-  const patient = await prisma.patient.findUnique({
-    where: { id: patientId },
-    include: { prescription: true },
-  });
+  let patient;
+  let isMockData = false;
+
+  try {
+    patient = await prisma.patient.findUnique({
+      where: { id: patientId },
+      include: { prescription: true },
+    });
+  } catch {
+    // DEMO-DATA FALLBACK — see src/mock-data/README.md to remove.
+    isMockData = true;
+    const mockPatient = getMockPatientById(patientId);
+    patient = mockPatient ? { ...mockPatient, prescription: MOCK_PRESCRIPTIONS[patientId] ?? null } : null;
+  }
+
   if (!patient) notFound();
 
   return (
@@ -30,6 +44,7 @@ export default async function Page({ params }) {
           ? { ...patient.prescription, updatedAt: patient.prescription.updatedAt.toISOString() }
           : null
       }
+      isMockData={isMockData}
     />
   );
 }
