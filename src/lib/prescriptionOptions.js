@@ -39,12 +39,12 @@ export const MECHANICAL_RESPONSE_LEVEL_OPTIONS = [
   "Very Severe",
 ];
 
-// Each "group" mirrors one bordered block of Pretest Symptom / movement / Rep
-// rows from the "Symptomatic and Mechanical Response" section of the form.
+// Each "group" mirrors one bordered block of movement / Rep rows from the
+// "Symptomatic and Mechanical Response" section of the form.
 export const MECHANICAL_RESPONSE_GROUPS = [
   {
     key: "cervicalRepeated",
-    title: "Repeated Movements",
+    title: "Protraclum",
     rows: [
       { key: "PRO", label: "PRO" },
       { key: "repPRO", label: "Rep PRO" },
@@ -191,7 +191,7 @@ export function emptyMechanicalResponse() {
   return Object.fromEntries(
     MECHANICAL_RESPONSE_GROUPS.map((group) => [
       group.key,
-      { pretest: "", ...Object.fromEntries(group.rows.map((row) => [row.key, ""])) },
+      Object.fromEntries(group.rows.map((row) => [row.key, ""])),
     ])
   );
 }

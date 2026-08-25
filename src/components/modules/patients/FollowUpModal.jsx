@@ -202,12 +202,6 @@ export function FollowUpModal({ open, onClose, onAdd }) {
               <div key={group.key} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
                 <p className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">{group.title}</p>
                 <div className="space-y-3">
-                  <SelectField
-                    label="Pretest Symptom"
-                    options={MECHANICAL_RESPONSE_LEVEL_OPTIONS}
-                    value={form.mechanicalResponse[group.key].pretest}
-                    onChange={(e) => updateMechanical(group.key, "pretest", e.target.value)}
-                  />
                   <div className="grid grid-cols-2 gap-3">
                     {group.rows.map((row) => (
                       <SelectField

@@ -54,8 +54,7 @@ function ReadingSummary({ title, rows, values }) {
 function FollowUpEntryCard({ entry, index, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const mechanicalGroupsWithData = MECHANICAL_RESPONSE_GROUPS.filter((group) =>
-    group.rows.some((row) => entry.mechanicalResponse[group.key][row.key]) ||
-    entry.mechanicalResponse[group.key].pretest
+    group.rows.some((row) => entry.mechanicalResponse[group.key][row.key])
   );
 
   return (
@@ -119,11 +118,6 @@ function FollowUpEntryCard({ entry, index, onDelete }) {
                 {mechanicalGroupsWithData.map((group) => (
                   <div key={group.key} className="rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
                     <p className="mb-1 font-medium text-zinc-700 dark:text-zinc-300">{group.title}</p>
-                    {entry.mechanicalResponse[group.key].pretest && (
-                      <p className="text-zinc-500 dark:text-zinc-400">
-                        Pretest Symptom: {entry.mechanicalResponse[group.key].pretest}
-                      </p>
-                    )}
                     {group.rows
                       .filter((row) => entry.mechanicalResponse[group.key][row.key])
                       .map((row) => (
@@ -160,7 +154,7 @@ export function FollowUpTab({ data, onChange }) {
     <div className="space-y-6">
       <div className="flex justify-end">
         <Button type="button" onClick={() => setModalOpen(true)}>
-          Add new Patient Follow Up
+          Add Patient's Follow Up Session
         </Button>
       </div>
 

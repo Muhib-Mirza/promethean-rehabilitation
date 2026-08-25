@@ -89,15 +89,15 @@ const ayeshaPrescriptionData = {
       neurodynamicTests: "SLR negative bilaterally",
     },
     mechanicalResponse: {
-      cervicalRepeated: { pretest: "Nil", PRO: "Nil", repPRO: "Nil", RET: "Nil", repRET: "Nil", RETEXT: "Nil", repRETEXT: "Nil" },
-      retraction: { pretest: "Mild", RET: "Mild", repRET: "Nil", RETEXT: "Nil", repRETEXT: "Nil" },
+      cervicalRepeated: { PRO: "Nil", repPRO: "Nil", RET: "Nil", repRET: "Nil", RETEXT: "Nil", repRETEXT: "Nil" },
+      retraction: { RET: "Mild", repRET: "Nil", RETEXT: "Nil", repRETEXT: "Nil" },
       lateralAndRotation: {
-        pretest: "Moderate", LF_R: "Mild", repLF_R: "Nil", LF_L: "Moderate", repLF_L: "Mild",
+        LF_R: "Mild", repLF_R: "Nil", LF_L: "Moderate", repLF_L: "Mild",
         ROT_R: "Nil", repROT_R: "Nil", ROT_L: "Mild", repROT_L: "Nil", FLEX: "Severe", repFLEX: "Moderate",
       },
-      standing: { pretest: "Severe", FIS: "Severe", repFIS: "Moderate", EIS: "Mild", repEIS: "Nil" },
-      lying: { pretest: "Moderate", FIL: "Moderate", repFIL: "Mild", EIL: "Nil", repEIL: "Nil" },
-      sideGlide: { pretest: "Nil", SGIS_R: "Nil", repSGIS_R: "Nil", SGIS_L: "Nil", repSGIS_L: "Nil" },
+      standing: { FIS: "Severe", repFIS: "Moderate", EIS: "Mild", repEIS: "Nil" },
+      lying: { FIL: "Moderate", repFIL: "Mild", EIL: "Nil", repEIL: "Nil" },
+      sideGlide: { SGIS_R: "Nil", repSGIS_R: "Nil", SGIS_L: "Nil", repSGIS_L: "Nil" },
     },
     asymmetry: {
       atlasRotation: { rightAnt: false, rightPost: false, leftAnt: false, leftPost: false },

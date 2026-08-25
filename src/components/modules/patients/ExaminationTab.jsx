@@ -287,12 +287,6 @@ export function ExaminationTab({ data, onChange }) {
                 {group.title}
               </p>
               <div className="space-y-3">
-                <SelectField
-                  label="Pretest Symptom"
-                  options={MECHANICAL_RESPONSE_LEVEL_OPTIONS}
-                  value={examination.mechanicalResponse[group.key].pretest}
-                  onChange={(e) => updateMechanical(group.key, "pretest", e.target.value)}
-                />
                 <div className="grid grid-cols-2 gap-3">
                   {group.rows.map((row) => (
                     <SelectField
@@ -376,7 +370,7 @@ export function ExaminationTab({ data, onChange }) {
       <section>
         <SectionTitle>Labs and Radiological Examination</SectionTitle>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:col-span-2">
+          <div className="flex flex-col gap-2 lg:col-span-2">
             {LABS_ITEMS.filter((item) => !item.label.startsWith("X-rays")).map(renderLabItem)}
           </div>
           <div className="flex flex-col gap-2">
