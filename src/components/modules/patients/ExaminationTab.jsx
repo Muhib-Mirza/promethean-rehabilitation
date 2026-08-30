@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useImperativeHandle, useState } from "react";
 import { TextField } from "@/components/ui/TextField";
 import { TextAreaField } from "@/components/ui/TextAreaField";
 import { RadioGroupField } from "@/components/ui/RadioGroupField";
@@ -38,9 +38,70 @@ function SectionTitle({ children }) {
   );
 }
 
+const isBlank = (value) => value == null || String(value).trim() === "";
+
+const POSTURAL_FIELDS = [
+  "sitting",
+  "standing",
+  "shiftRelevant",
+  "changeOfPosture",
+  "protrudedHead",
+  "lateralDeviation",
+  "lateralShift",
+  "lateralDeviationRelevant",
+];
+
+const NEURO_FIELDS = ["motorDeficit", "sensoryDeficit", "reflexes", "neurodynamicTests"];
+
+// Every choice / input field on this tab is mandatory except the free-text
+// areas and the whole "Labs and Radiological Examination" section. Ordered
+// top-to-bottom so validation focuses the first offending field. Each
+// `invalid` predicate receives `data.examination`.
+const REQUIRED_FIELDS = [
+  ...POSTURAL_FIELDS.map((key) => ({
+    id: `exam-postural-${key}`,
+    message: "Please select an option.",
+    invalid: (ex) => isBlank(ex.postural[key]),
+  })),
+  ...NEURO_FIELDS.map((key) => ({
+    id: `exam-neuro-${key}`,
+    message: "This field is required.",
+    invalid: (ex) => isBlank(ex.neurological[key]),
+  })),
+  ...MECHANICAL_RESPONSE_GROUPS.flatMap((group) =>
+    group.rows.map((row) => ({
+      id: `exam-mech-${group.key}-${row.key}`,
+      message: "Please select an option.",
+      invalid: (ex) => isBlank(ex.mechanicalResponse[group.key][row.key]),
+    }))
+  ),
+  {
+    id: "exam-atlas",
+    message: "Please select at least one option.",
+    invalid: (ex) =>
+      !ASYMMETRY_ROWS.some((row) =>
+        ASYMMETRY_COLUMNS.some((col) => ex.asymmetry[row.key][col.key])
+      ),
+  },
+  ...LEVEL_ROWS.flatMap((row) =>
+    ["left", "right"].map((side) => ({
+      id: `exam-levels-${row.key}-${side}`,
+      message: "This field is required.",
+      invalid: (ex) => isBlank(ex.levels[row.key][side]),
+    }))
+  ),
+  ...WEAKNESS_ROWS.flatMap((row) =>
+    ["left", "right"].map((side) => ({
+      id: `exam-weakness-${row.key}-${side}`,
+      message: "This field is required.",
+      invalid: (ex) => isBlank(ex.weakness[row.key][side]),
+    }))
+  ),
+];
+
 // Shared UI for LEVEL_ROWS / WEAKNESS_ROWS: a Left/Right numeric reading per
 // row, each field within [min, max] in `step` increments.
-function LevelInputGroup({ rows, section, min, max, step, values, onFieldChange,textHeading }) {
+function LevelInputGroup({ rows, section, min, max, step, values, onFieldChange, textHeading, errors }) {
   return (
     <>
     <div className="mt-4">
@@ -52,20 +113,26 @@ function LevelInputGroup({ rows, section, min, max, step, values, onFieldChange,
           <p className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">{row.label}</p>
           <div className="grid grid-cols-2 gap-3">
             <TextField
+              id={`exam-${section}-${row.key}-left`}
               label="Left"
               type="number"
               min={min}
               max={max}
               step={step}
+              required
+              error={errors?.[`exam-${section}-${row.key}-left`]}
               value={values[row.key].left}
               onChange={(e) => onFieldChange(section, row.key, "left", e.target.value)}
             />
             <TextField
+              id={`exam-${section}-${row.key}-right`}
               label="Right"
               type="number"
               min={min}
               max={max}
               step={step}
+              required
+              error={errors?.[`exam-${section}-${row.key}-right`]}
               value={values[row.key].right}
               onChange={(e) => onFieldChange(section, row.key, "right", e.target.value)}
             />
@@ -77,13 +144,54 @@ function LevelInputGroup({ rows, section, min, max, step, values, onFieldChange,
   );
 }
 
-export function ExaminationTab({ data, onChange }) {
+export function ExaminationTab({ ref, data, onChange }) {
   const examination = data.examination;
   const [reportDetailItem, setReportDetailItem] = useState(null);
   const [reportDetailDraft, setReportDetailDraft] = useState("");
+  const [errors, setErrors] = useState({});
+
+  // Exposed to the parent's "Save Prescription" handler. Returns true when
+  // everything required is filled; otherwise records per-field errors and
+  // scrolls to / focuses the first offending field.
+  useImperativeHandle(
+    ref,
+    () => ({
+      validate() {
+        const nextErrors = {};
+        for (const field of REQUIRED_FIELDS) {
+          if (field.invalid(examination)) nextErrors[field.id] = field.message;
+        }
+        setErrors(nextErrors);
+
+        const firstInvalid = REQUIRED_FIELDS.find((field) => nextErrors[field.id]);
+        if (firstInvalid && typeof document !== "undefined") {
+          const el = document.getElementById(firstInvalid.id);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.focus({ preventScroll: true });
+          }
+        }
+        return !firstInvalid;
+      },
+    }),
+    [examination]
+  );
 
   function updateExamination(next) {
-    onChange({ ...data, examination: { ...examination, ...next } });
+    const nextExamination = { ...examination, ...next };
+    // Drop any standing error the change resolves; new errors are only ever
+    // raised by a save attempt (validate()).
+    setErrors((prev) => {
+      const keys = Object.keys(prev);
+      if (keys.length === 0) return prev;
+      const pruned = {};
+      for (const key of keys) {
+        const field = REQUIRED_FIELDS.find((f) => f.id === key);
+        if (field && field.invalid(nextExamination)) pruned[key] = prev[key];
+      }
+      return Object.keys(pruned).length === keys.length ? prev : pruned;
+    });
+    onChange({ ...data, examination: nextExamination });
   }
 
   function updatePostural(field, value) {
@@ -191,49 +299,73 @@ export function ExaminationTab({ data, onChange }) {
         <SectionTitle>Postural Observation</SectionTitle>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <RadioGroupField
+            id="exam-postural-sitting"
             label="Sitting"
+            required
+            error={errors["exam-postural-sitting"]}
             options={SITTING_OPTIONS}
             value={examination.postural.sitting}
             onChange={(value) => updatePostural("sitting", value)}
           />
           <RadioGroupField
+            id="exam-postural-standing"
             label="Standing"
+            required
+            error={errors["exam-postural-standing"]}
             options={STANDING_OPTIONS}
             value={examination.postural.standing}
             onChange={(value) => updatePostural("standing", value)}
           />
           <RadioGroupField
+            id="exam-postural-shiftRelevant"
             label="Shift Relevant"
+            required
+            error={errors["exam-postural-shiftRelevant"]}
             options={YES_NO_OPTIONS}
             value={examination.postural.shiftRelevant}
             onChange={(value) => updatePostural("shiftRelevant", value)}
           />
           <RadioGroupField
+            id="exam-postural-changeOfPosture"
             label="Change of Posture"
+            required
+            error={errors["exam-postural-changeOfPosture"]}
             options={CHANGE_OF_POSTURE_OPTIONS}
             value={examination.postural.changeOfPosture}
             onChange={(value) => updatePostural("changeOfPosture", value)}
           />
           <RadioGroupField
+            id="exam-postural-protrudedHead"
             label="Protruded Head"
+            required
+            error={errors["exam-postural-protrudedHead"]}
             options={YES_NO_OPTIONS}
             value={examination.postural.protrudedHead}
             onChange={(value) => updatePostural("protrudedHead", value)}
           />
           <RadioGroupField
+            id="exam-postural-lateralDeviation"
             label="Lateral Deviation"
+            required
+            error={errors["exam-postural-lateralDeviation"]}
             options={LATERAL_OPTIONS}
             value={examination.postural.lateralDeviation}
             onChange={(value) => updatePostural("lateralDeviation", value)}
           />
           <RadioGroupField
+            id="exam-postural-lateralShift"
             label="Lateral Shift"
+            required
+            error={errors["exam-postural-lateralShift"]}
             options={LATERAL_OPTIONS}
             value={examination.postural.lateralShift}
             onChange={(value) => updatePostural("lateralShift", value)}
           />
           <RadioGroupField
+            id="exam-postural-lateralDeviationRelevant"
             label="Lateral Deviation Relevant"
+            required
+            error={errors["exam-postural-lateralDeviationRelevant"]}
             options={YES_NO_OPTIONS}
             value={examination.postural.lateralDeviationRelevant}
             onChange={(value) => updatePostural("lateralDeviationRelevant", value)}
@@ -253,22 +385,34 @@ export function ExaminationTab({ data, onChange }) {
         <SectionTitle>Neurological</SectionTitle>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField
+            id="exam-neuro-motorDeficit"
             label="Motor Deficit"
+            required
+            error={errors["exam-neuro-motorDeficit"]}
             value={examination.neurological.motorDeficit}
             onChange={(e) => updateNeurological("motorDeficit", e.target.value)}
           />
           <TextField
+            id="exam-neuro-sensoryDeficit"
             label="Sensory Deficit"
+            required
+            error={errors["exam-neuro-sensoryDeficit"]}
             value={examination.neurological.sensoryDeficit}
             onChange={(e) => updateNeurological("sensoryDeficit", e.target.value)}
           />
           <TextField
+            id="exam-neuro-reflexes"
             label="Reflexes"
+            required
+            error={errors["exam-neuro-reflexes"]}
             value={examination.neurological.reflexes}
             onChange={(e) => updateNeurological("reflexes", e.target.value)}
           />
           <TextField
+            id="exam-neuro-neurodynamicTests"
             label="Neurodynamic Tests"
+            required
+            error={errors["exam-neuro-neurodynamicTests"]}
             value={examination.neurological.neurodynamicTests}
             onChange={(e) => updateNeurological("neurodynamicTests", e.target.value)}
           />
@@ -291,7 +435,10 @@ export function ExaminationTab({ data, onChange }) {
                   {group.rows.map((row) => (
                     <SelectField
                       key={row.key}
+                      id={`exam-mech-${group.key}-${row.key}`}
                       label={row.label}
+                      required
+                      error={errors[`exam-mech-${group.key}-${row.key}`]}
                       options={MECHANICAL_RESPONSE_LEVEL_OPTIONS}
                       value={examination.mechanicalResponse[group.key][row.key]}
                       onChange={(e) => updateMechanical(group.key, row.key, e.target.value)}
@@ -305,8 +452,14 @@ export function ExaminationTab({ data, onChange }) {
       </section>
 
       <section>
-        <SectionTitle>Atlas Findings</SectionTitle>
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <SectionTitle>
+          Atlas Findings<span className="text-red-500"> *</span>
+        </SectionTitle>
+        <div
+          id="exam-atlas"
+          tabIndex={-1}
+          className="scroll-mt-24 overflow-x-auto rounded-lg border border-zinc-200 focus:outline-none dark:border-zinc-800"
+        >
           <table className="w-full min-w-max text-left text-sm">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-800">
@@ -343,7 +496,10 @@ export function ExaminationTab({ data, onChange }) {
             </tbody>
           </table>
         </div>
-        
+        {errors["exam-atlas"] && (
+          <span className="mt-1 block text-xs text-red-500">{errors["exam-atlas"]}</span>
+        )}
+
         <LevelInputGroup
           rows={LEVEL_ROWS}
           section="levels"
@@ -353,6 +509,7 @@ export function ExaminationTab({ data, onChange }) {
           values={examination.levels}
           onFieldChange={updateLevelField}
           textHeading={"Inclinometer Readings"}
+          errors={errors}
         />
 
         <LevelInputGroup
@@ -364,6 +521,7 @@ export function ExaminationTab({ data, onChange }) {
           values={examination.weakness}
           onFieldChange={updateLevelField}
           textHeading={"Manual Muscle Testing"}
+          errors={errors}
         />
       </section>
 

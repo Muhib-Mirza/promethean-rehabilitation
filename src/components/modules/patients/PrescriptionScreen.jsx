@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -58,6 +58,8 @@ export function PrescriptionScreen({ patient, prescription, isMockData = false }
   const [data, setData] = useState(() => parseData(prescription));
   const [savedAt, setSavedAt] = useState(prescription?.updatedAt ?? null);
   const [saving, setSaving] = useState(false);
+  const complaintRef = useRef(null);
+  const examinationRef = useRef(null);
 
   function handlePatientSaved(updatedPatient) {
     setPatientInfo(updatedPatient);
@@ -65,6 +67,16 @@ export function PrescriptionScreen({ patient, prescription, isMockData = false }
   }
 
   async function handleSave() {
+    if (complaintRef.current && !complaintRef.current.validate()) {
+      showToast("Please complete all required fields in the Patient Complaint tab.");
+      return;
+    }
+
+    if (examinationRef.current && !examinationRef.current.validate()) {
+      showToast("Please complete all required fields in the Examination tab.");
+      return;
+    }
+
     setSaving(true);
     try {
       const response = await fetch(`/api/patients/${patient.id}/prescription`, {
@@ -119,9 +131,9 @@ export function PrescriptionScreen({ patient, prescription, isMockData = false }
       {activeTab === "info" ? (
         <PatientInfoTab patient={patientInfo} onSaved={handlePatientSaved} />
       ) : activeTab === "complaint" ? (
-        <ComplaintTab patient={patientInfo} data={data} onChange={setData} />
+        <ComplaintTab ref={complaintRef} patient={patientInfo} data={data} onChange={setData} />
       ) : activeTab === "examination" ? (
-        <ExaminationTab data={data} onChange={setData} />
+        <ExaminationTab ref={examinationRef} data={data} onChange={setData} />
       ) : (
         <FollowUpTab data={data} onChange={setData} />
       )}

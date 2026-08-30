@@ -1,5 +1,6 @@
 "use client";
 
+import { useImperativeHandle, useState } from "react";
 import { TextField } from "@/components/ui/TextField";
 import { TextAreaField } from "@/components/ui/TextAreaField";
 import { RadioGroupField } from "@/components/ui/RadioGroupField";
@@ -24,17 +25,90 @@ function SectionTitle({ children }) {
   );
 }
 
-export function ComplaintTab({ patient, data, onChange }) {
+const isBlank = (value) => value == null || String(value).trim() === "";
+const isEmptyList = (value) => !Array.isArray(value) || value.length === 0;
+
+// Every choice / input field on this tab is mandatory except the free-text
+// areas ("Present Symptoms", "Treatment Plan"). Ordered top-to-bottom so
+// validation focuses the first offending field.
+const REQUIRED_FIELDS = [
+  { id: "complaint-date", message: "This field is required.", invalid: (d) => isBlank(d.date) },
+  { id: "complaint-mrn", message: "This field is required.", invalid: (d) => isBlank(d.mrn) },
+  { id: "complaint-duration", message: "This field is required.", invalid: (d) => isBlank(d.duration) },
+  { id: "complaint-symptoms", message: "This field is required.", invalid: (d) => isBlank(d.chiefComplaint) },
+  { id: "complaint-injuryGrade", message: "Please select an option.", invalid: (d) => isBlank(d.injuryGrade) },
+  { id: "complaint-nprs", message: "This field is required.", invalid: (d) => isBlank(d.complaint.nprs) },
+  { id: "complaint-presentSince", message: "Please select an option.", invalid: (d) => isBlank(d.complaint.presentSince) },
+  { id: "complaint-symptomsAtOnset", message: "Please select at least one option.", invalid: (d) => isEmptyList(d.complaint.symptomsAtOnset) },
+  { id: "complaint-constantSymptoms", message: "Please select at least one option.", invalid: (d) => isEmptyList(d.complaint.constantSymptoms) },
+  { id: "complaint-intermittentSymptoms", message: "Please select at least one option.", invalid: (d) => isEmptyList(d.complaint.intermittentSymptoms) },
+  { id: "complaint-worse-position", message: "Please select at least one option.", invalid: (d) => isEmptyList(d.complaint.worse.position) },
+  { id: "complaint-worse-timing", message: "Please select an option.", invalid: (d) => isBlank(d.complaint.worse.timing) },
+  { id: "complaint-worse-activity", message: "Please select an option.", invalid: (d) => isBlank(d.complaint.worse.activity) },
+  { id: "complaint-better-position", message: "Please select at least one option.", invalid: (d) => isEmptyList(d.complaint.better.position) },
+  { id: "complaint-better-timing", message: "Please select an option.", invalid: (d) => isBlank(d.complaint.better.timing) },
+  { id: "complaint-better-activity", message: "Please select an option.", invalid: (d) => isBlank(d.complaint.better.activity) },
+  { id: "complaint-disturbedSleep", message: "Please select an option.", invalid: (d) => isBlank(d.complaint.disturbedSleep) },
+  { id: "complaint-classification", message: "Please select an option.", invalid: (d) => isBlank(d.classification) },
+];
+
+export function ComplaintTab({ ref, patient, data, onChange }) {
+  const [errors, setErrors] = useState({});
+
+  // Expose validation to the parent's "Save Prescription" handler. Returns
+  // true when everything required is filled; otherwise records per-field
+  // errors, scrolls to and focuses the first offending field.
+  useImperativeHandle(
+    ref,
+    () => ({
+      validate() {
+        const nextErrors = {};
+        for (const field of REQUIRED_FIELDS) {
+          if (field.invalid(data)) nextErrors[field.id] = field.message;
+        }
+        setErrors(nextErrors);
+
+        const firstInvalid = REQUIRED_FIELDS.find((field) => nextErrors[field.id]);
+        if (firstInvalid && typeof document !== "undefined") {
+          const el = document.getElementById(firstInvalid.id);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.focus({ preventScroll: true });
+          }
+        }
+        return !firstInvalid;
+      },
+    }),
+    [data]
+  );
+
+  // Drop any standing error for a field that the new data makes valid, so
+  // the message clears the moment the user fixes it. New errors are only
+  // ever raised by a save attempt (validate()).
+  function commit(nextData) {
+    setErrors((prev) => {
+      const keys = Object.keys(prev);
+      if (keys.length === 0) return prev;
+      const next = {};
+      for (const key of keys) {
+        const field = REQUIRED_FIELDS.find((f) => f.id === key);
+        if (field && field.invalid(nextData)) next[key] = prev[key];
+      }
+      return Object.keys(next).length === keys.length ? prev : next;
+    });
+    onChange(nextData);
+  }
+
   function updateField(field, value) {
-    onChange({ ...data, [field]: value });
+    commit({ ...data, [field]: value });
   }
 
   function updateComplaint(field, value) {
-    onChange({ ...data, complaint: { ...data.complaint, [field]: value } });
+    commit({ ...data, complaint: { ...data.complaint, [field]: value } });
   }
 
   function updateWorseBetter(group, field, value) {
-    onChange({
+    commit({
       ...data,
       complaint: {
         ...data.complaint,
@@ -76,19 +150,28 @@ export function ComplaintTab({ patient, data, onChange }) {
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <TextField
+            id="complaint-date"
             label="Date"
             type="date"
+            required
+            error={errors["complaint-date"]}
             value={data.date}
             onChange={(e) => updateField("date", e.target.value)}
           />
           <TextField
+            id="complaint-mrn"
             label="MRN"
+            required
+            error={errors["complaint-mrn"]}
             value={data.mrn}
             onChange={(e) => updateField("mrn", e.target.value)}
             placeholder="Medical record no."
           />
           <TextField
+            id="complaint-duration"
             label="Duration"
+            required
+            error={errors["complaint-duration"]}
             value={data.duration}
             onChange={(e) => updateField("duration", e.target.value)}
             placeholder="e.g. 3 weeks"
@@ -97,13 +180,19 @@ export function ComplaintTab({ patient, data, onChange }) {
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField
+            id="complaint-symptoms"
             label="Symptoms"
+            required
+            error={errors["complaint-symptoms"]}
             value={data.chiefComplaint}
             onChange={(e) => updateField("chiefComplaint", e.target.value)}
             placeholder="Chief complaint summary"
           />
           <RadioGroupField
+            id="complaint-injuryGrade"
             label="Injury Grade"
+            required
+            error={errors["complaint-injuryGrade"]}
             options={INJURY_GRADES}
             value={data.injuryGrade}
             onChange={(value) => updateField("injuryGrade", value)}
@@ -115,38 +204,53 @@ export function ComplaintTab({ patient, data, onChange }) {
         <SectionTitle>Patient Complaint</SectionTitle>
         <div className="space-y-4">
           <TextField
+            id="complaint-nprs"
             label="NPRS (0-10)"
             type="number"
             min={0}
             max={10}
+            required
+            error={errors["complaint-nprs"]}
             className="max-w-[10rem]"
             value={data.complaint.nprs}
             onChange={(e) => updateComplaint("nprs", e.target.value)}
           />
 
           <RadioGroupField
+            id="complaint-presentSince"
             label="Present Since"
+            required
+            error={errors["complaint-presentSince"]}
             options={PRESENT_SINCE_OPTIONS}
             value={data.complaint.presentSince}
             onChange={(value) => updateComplaint("presentSince", value)}
           />
 
           <CheckboxGroupField
+            id="complaint-symptomsAtOnset"
             label="Symptoms at Onset"
+            required
+            error={errors["complaint-symptomsAtOnset"]}
             options={BODY_REGION_OPTIONS}
             values={data.complaint.symptomsAtOnset}
             onChange={(values) => updateComplaint("symptomsAtOnset", values)}
           />
 
           <CheckboxGroupField
+            id="complaint-constantSymptoms"
             label="Constant Symptoms"
+            required
+            error={errors["complaint-constantSymptoms"]}
             options={BODY_REGION_OPTIONS}
             values={data.complaint.constantSymptoms}
             onChange={(values) => updateComplaint("constantSymptoms", values)}
           />
 
           <CheckboxGroupField
+            id="complaint-intermittentSymptoms"
             label="Intermittent Symptoms"
+            required
+            error={errors["complaint-intermittentSymptoms"]}
             options={BODY_REGION_OPTIONS}
             values={data.complaint.intermittentSymptoms}
             onChange={(values) => updateComplaint("intermittentSymptoms", values)}
@@ -156,19 +260,28 @@ export function ComplaintTab({ patient, data, onChange }) {
             <p className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">Worse</p>
             <div className="space-y-3">
               <CheckboxGroupField
+                id="complaint-worse-position"
                 label="Position"
+                required
+                error={errors["complaint-worse-position"]}
                 options={RESPONSE_POSITION_OPTIONS}
                 values={data.complaint.worse.position}
                 onChange={(values) => updateWorseBetter("worse", "position", values)}
               />
               <RadioGroupField
+                id="complaint-worse-timing"
                 label="Time of day"
+                required
+                error={errors["complaint-worse-timing"]}
                 options={RESPONSE_TIMING_OPTIONS}
                 value={data.complaint.worse.timing}
                 onChange={(value) => updateWorseBetter("worse", "timing", value)}
               />
               <RadioGroupField
+                id="complaint-worse-activity"
                 label="Activity"
+                required
+                error={errors["complaint-worse-activity"]}
                 options={RESPONSE_ACTIVITY_OPTIONS}
                 value={data.complaint.worse.activity}
                 onChange={(value) => updateWorseBetter("worse", "activity", value)}
@@ -180,19 +293,28 @@ export function ComplaintTab({ patient, data, onChange }) {
             <p className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">Better</p>
             <div className="space-y-3">
               <CheckboxGroupField
+                id="complaint-better-position"
                 label="Position"
+                required
+                error={errors["complaint-better-position"]}
                 options={RESPONSE_POSITION_OPTIONS}
                 values={data.complaint.better.position}
                 onChange={(values) => updateWorseBetter("better", "position", values)}
               />
               <RadioGroupField
+                id="complaint-better-timing"
                 label="Time of day"
+                required
+                error={errors["complaint-better-timing"]}
                 options={RESPONSE_TIMING_OPTIONS}
                 value={data.complaint.better.timing}
                 onChange={(value) => updateWorseBetter("better", "timing", value)}
               />
               <RadioGroupField
+                id="complaint-better-activity"
                 label="Activity"
+                required
+                error={errors["complaint-better-activity"]}
                 options={RESPONSE_ACTIVITY_OPTIONS}
                 value={data.complaint.better.activity}
                 onChange={(value) => updateWorseBetter("better", "activity", value)}
@@ -201,7 +323,10 @@ export function ComplaintTab({ patient, data, onChange }) {
           </div>
 
           <RadioGroupField
+            id="complaint-disturbedSleep"
             label="Disturbed Sleep"
+            required
+            error={errors["complaint-disturbedSleep"]}
             options={YES_NO_OPTIONS}
             value={data.complaint.disturbedSleep}
             onChange={(value) => updateComplaint("disturbedSleep", value)}
@@ -234,7 +359,10 @@ export function ComplaintTab({ patient, data, onChange }) {
         />
         <div className="mt-4">
           <RadioGroupField
+            id="complaint-classification"
             label="Classification"
+            required
+            error={errors["complaint-classification"]}
             options={CLASSIFICATIONS}
             value={data.classification}
             onChange={(value) => updateField("classification", value)}

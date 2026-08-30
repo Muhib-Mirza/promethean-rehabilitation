@@ -1,8 +1,10 @@
 // Multi-select group of pill buttons — same visual language as
 // RadioGroupField, but toggles membership in a `values` array.
 export function CheckboxGroupField({
+  id,
   label,
   error,
+  required,
   options,
   values = [],
   onChange,
@@ -17,9 +19,14 @@ export function CheckboxGroupField({
   }
 
   return (
-    <div className={`block ${className}`}>
+    <div
+      id={id}
+      tabIndex={id ? -1 : undefined}
+      className={`block scroll-mt-24 focus:outline-none ${className}`}
+    >
       <span className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
         {label}
+        {required && <span className="text-red-500"> *</span>}
       </span>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {

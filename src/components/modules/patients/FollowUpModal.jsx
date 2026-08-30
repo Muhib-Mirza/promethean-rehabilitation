@@ -5,6 +5,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { RadioGroupField } from "@/components/ui/RadioGroupField";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import {
   GMFCS_OPTIONS,
   FOLLOW_UP_ATLAS_ROWS,
@@ -30,100 +31,195 @@ function SectionTitle({ children }) {
   );
 }
 
+const isBlank = (value) => value == null || String(value).trim() === "";
+
+// Every choice / input field in this modal is mandatory (there are no
+// free-text areas here). Ordered top-to-bottom so validation focuses the
+// first offending field. Each `invalid` predicate receives the form entry.
+const REQUIRED_FIELDS = [
+  { id: "fu-gmfcs", message: "Please select an option.", invalid: (f) => isBlank(f.gmfcs) },
+  {
+    id: "fu-atlas",
+    message: "Please select at least one option.",
+    invalid: (f) =>
+      !FOLLOW_UP_ATLAS_ROWS.some((row) =>
+        FOLLOW_UP_ATLAS_COLUMNS.some((col) => f.atlasRotation[row.key][col.key])
+      ),
+  },
+  ...LEVEL_ROWS.flatMap((row) =>
+    ["right", "left"].map((side) => ({
+      id: `fu-inclinometer-${row.key}-${side}`,
+      message: "This field is required.",
+      invalid: (f) => isBlank(f.inclinometer[row.key][side]),
+    }))
+  ),
+  ...WEAKNESS_ROWS.flatMap((row) =>
+    ["right", "left"].map((side) => ({
+      id: `fu-muscleTesting-${row.key}-${side}`,
+      message: "This field is required.",
+      invalid: (f) => isBlank(f.muscleTesting[row.key][side]),
+    }))
+  ),
+  ...MECHANICAL_RESPONSE_GROUPS.flatMap((group) =>
+    group.rows.map((row) => ({
+      id: `fu-mech-${group.key}-${row.key}`,
+      message: "Please select an option.",
+      invalid: (f) => isBlank(f.mechanicalResponse[group.key][row.key]),
+    }))
+  ),
+];
+
 // Shared table for Inclinometer Readings / Manual Muscle Testing: each row
 // (Shoulder/Pelvic ...) gets a Right/Left numeric reading, rendered as an
 // actual 2-column table per the requested tabular layout.
-function ReadingTable({ rows, min, max, step, values, onChange }) {
+function ReadingTable({ rows, min, max, step, values, onChange, section, errors = {} }) {
+  const inputClass = (fieldId) =>
+    `w-24 rounded-lg border bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:border-teal-500 dark:bg-zinc-900 dark:text-zinc-50 ${
+      errors[fieldId]
+        ? "border-red-400"
+        : "border-zinc-300 dark:border-zinc-700"
+    }`;
+  const hasError = rows.some((row) =>
+    ["right", "left"].some((side) => errors[`fu-${section}-${row.key}-${side}`])
+  );
+
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-      <table className="w-full min-w-max text-left text-sm">
-        <thead>
-          <tr className="border-b border-zinc-200 dark:border-zinc-800">
-            <th className="px-4 py-2 font-medium text-zinc-500 dark:text-zinc-400" />
-            <th className="px-4 py-2 font-medium text-zinc-500 dark:text-zinc-400">Right Level</th>
-            <th className="px-4 py-2 font-medium text-zinc-500 dark:text-zinc-400">Left Level</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.key} className="border-b border-zinc-100 last:border-0 dark:border-zinc-900">
-              <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">{row.label}</td>
-              <td className="px-4 py-2">
-                <input
-                  type="number"
-                  aria-label={`${row.label} Right Level`}
-                  min={min}
-                  max={max}
-                  step={step}
-                  value={values[row.key].right}
-                  onChange={(e) => onChange(row.key, "right", e.target.value)}
-                  className="w-24 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:border-teal-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
-              </td>
-              <td className="px-4 py-2">
-                <input
-                  type="number"
-                  aria-label={`${row.label} Left Level`}
-                  min={min}
-                  max={max}
-                  step={step}
-                  value={values[row.key].left}
-                  onChange={(e) => onChange(row.key, "left", e.target.value)}
-                  className="w-24 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:border-teal-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
-              </td>
+    <>
+      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <table className="w-full min-w-max text-left text-sm">
+          <thead>
+            <tr className="border-b border-zinc-200 dark:border-zinc-800">
+              <th className="px-4 py-2 font-medium text-zinc-500 dark:text-zinc-400" />
+              <th className="px-4 py-2 font-medium text-zinc-500 dark:text-zinc-400">Right Level</th>
+              <th className="px-4 py-2 font-medium text-zinc-500 dark:text-zinc-400">Left Level</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.key} className="border-b border-zinc-100 last:border-0 dark:border-zinc-900">
+                <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">{row.label}</td>
+                <td className="px-4 py-2">
+                  <input
+                    id={`fu-${section}-${row.key}-right`}
+                    type="number"
+                    aria-label={`${row.label} Right Level`}
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={values[row.key].right}
+                    onChange={(e) => onChange(row.key, "right", e.target.value)}
+                    className={inputClass(`fu-${section}-${row.key}-right`)}
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <input
+                    id={`fu-${section}-${row.key}-left`}
+                    type="number"
+                    aria-label={`${row.label} Left Level`}
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={values[row.key].left}
+                    onChange={(e) => onChange(row.key, "left", e.target.value)}
+                    className={inputClass(`fu-${section}-${row.key}-left`)}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {hasError && (
+        <span className="mt-1 block text-xs text-red-500">All readings are required.</span>
+      )}
+    </>
   );
 }
 
 export function FollowUpModal({ open, onClose, onAdd }) {
+  const { showToast } = useToast();
   const [form, setForm] = useState(emptyFollowUpEntry);
+  const [errors, setErrors] = useState({});
+
+  // Apply a form change and drop any standing error it resolves; new errors
+  // are only ever raised by a submit attempt.
+  function commit(nextForm) {
+    setForm(nextForm);
+    setErrors((prev) => {
+      const keys = Object.keys(prev);
+      if (keys.length === 0) return prev;
+      const pruned = {};
+      for (const key of keys) {
+        const field = REQUIRED_FIELDS.find((f) => f.id === key);
+        if (field && field.invalid(nextForm)) pruned[key] = prev[key];
+      }
+      return Object.keys(pruned).length === keys.length ? prev : pruned;
+    });
+  }
 
   function handleClose() {
     setForm(emptyFollowUpEntry());
+    setErrors({});
     onClose();
   }
 
   function updateField(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    commit({ ...form, [field]: value });
   }
 
   function toggleAtlas(rowKey, colKey) {
-    setForm((prev) => ({
-      ...prev,
+    commit({
+      ...form,
       atlasRotation: {
-        ...prev.atlasRotation,
-        [rowKey]: { ...prev.atlasRotation[rowKey], [colKey]: !prev.atlasRotation[rowKey][colKey] },
+        ...form.atlasRotation,
+        [rowKey]: { ...form.atlasRotation[rowKey], [colKey]: !form.atlasRotation[rowKey][colKey] },
       },
-    }));
+    });
   }
 
   function updateReading(section, rowKey, side, value) {
-    setForm((prev) => ({
-      ...prev,
-      [section]: { ...prev[section], [rowKey]: { ...prev[section][rowKey], [side]: value } },
-    }));
+    commit({
+      ...form,
+      [section]: { ...form[section], [rowKey]: { ...form[section][rowKey], [side]: value } },
+    });
   }
 
   function updateMechanical(groupKey, rowKey, value) {
-    setForm((prev) => ({
-      ...prev,
+    commit({
+      ...form,
       mechanicalResponse: {
-        ...prev.mechanicalResponse,
-        [groupKey]: { ...prev.mechanicalResponse[groupKey], [rowKey]: value },
+        ...form.mechanicalResponse,
+        [groupKey]: { ...form.mechanicalResponse[groupKey], [rowKey]: value },
       },
-    }));
+    });
   }
 
   function handleSubmit(event) {
     event.preventDefault();
+
+    const nextErrors = {};
+    for (const field of REQUIRED_FIELDS) {
+      if (field.invalid(form)) nextErrors[field.id] = field.message;
+    }
+    setErrors(nextErrors);
+
+    const firstInvalid = REQUIRED_FIELDS.find((field) => nextErrors[field.id]);
+    if (firstInvalid) {
+      showToast("Please complete all required fields before adding the follow up.");
+      if (typeof document !== "undefined") {
+        const el = document.getElementById(firstInvalid.id);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus({ preventScroll: true });
+        }
+      }
+      return;
+    }
+
     const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
     onAdd({ ...form, id, date: new Date().toISOString() });
     setForm(emptyFollowUpEntry());
+    setErrors({});
     onClose();
   }
 
@@ -132,12 +228,26 @@ export function FollowUpModal({ open, onClose, onAdd }) {
       <form onSubmit={handleSubmit} className="space-y-8">
         <section>
           <SectionTitle>GMFCS</SectionTitle>
-          <RadioGroupField options={GMFCS_OPTIONS} value={form.gmfcs} onChange={(value) => updateField("gmfcs", value)} label="Level" />
+          <RadioGroupField
+            id="fu-gmfcs"
+            options={GMFCS_OPTIONS}
+            value={form.gmfcs}
+            onChange={(value) => updateField("gmfcs", value)}
+            label="Level"
+            required
+            error={errors["fu-gmfcs"]}
+          />
         </section>
 
         <section>
-          <SectionTitle>Atlas Rotation</SectionTitle>
-          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <SectionTitle>
+            Atlas Rotation<span className="text-red-500"> *</span>
+          </SectionTitle>
+          <div
+            id="fu-atlas"
+            tabIndex={-1}
+            className="scroll-mt-24 overflow-x-auto rounded-lg border border-zinc-200 focus:outline-none dark:border-zinc-800"
+          >
             <table className="w-full min-w-max text-left text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800">
@@ -169,28 +279,39 @@ export function FollowUpModal({ open, onClose, onAdd }) {
               </tbody>
             </table>
           </div>
+          {errors["fu-atlas"] && (
+            <span className="mt-1 block text-xs text-red-500">{errors["fu-atlas"]}</span>
+          )}
         </section>
 
         <section>
-          <SectionTitle>Inclinometer Readings</SectionTitle>
+          <SectionTitle>
+            Inclinometer Readings<span className="text-red-500"> *</span>
+          </SectionTitle>
           <ReadingTable
             rows={LEVEL_ROWS}
+            section="inclinometer"
             min={LEVEL_MIN}
             max={LEVEL_MAX}
             step={LEVEL_STEP}
             values={form.inclinometer}
+            errors={errors}
             onChange={(rowKey, side, value) => updateReading("inclinometer", rowKey, side, value)}
           />
         </section>
 
         <section>
-          <SectionTitle>Manual Muscle Testing</SectionTitle>
+          <SectionTitle>
+            Manual Muscle Testing<span className="text-red-500"> *</span>
+          </SectionTitle>
           <ReadingTable
             rows={WEAKNESS_ROWS}
+            section="muscleTesting"
             min={WEAKNESS_MIN}
             max={WEAKNESS_MAX}
             step={WEAKNESS_STEP}
             values={form.muscleTesting}
+            errors={errors}
             onChange={(rowKey, side, value) => updateReading("muscleTesting", rowKey, side, value)}
           />
         </section>
@@ -206,7 +327,10 @@ export function FollowUpModal({ open, onClose, onAdd }) {
                     {group.rows.map((row) => (
                       <SelectField
                         key={row.key}
+                        id={`fu-mech-${group.key}-${row.key}`}
                         label={row.label}
+                        required
+                        error={errors[`fu-mech-${group.key}-${row.key}`]}
                         options={MECHANICAL_RESPONSE_LEVEL_OPTIONS}
                         value={form.mechanicalResponse[group.key][row.key]}
                         onChange={(e) => updateMechanical(group.key, row.key, e.target.value)}
