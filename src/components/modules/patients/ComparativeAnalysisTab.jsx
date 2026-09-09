@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LineChart } from "@/components/ui/LineChart";
+import { BarChart } from "@/components/ui/BarChart";
 import { BarChartIcon } from "@/components/icons";
 import {
   LEVEL_MIN,
@@ -60,7 +62,44 @@ function ChartCard({ title, children }) {
   );
 }
 
+const CHART_TYPES = [
+  { key: "line", label: "Line" },
+  { key: "bar", label: "Bar" },
+];
+
+function ChartTypeToggle({ value, onChange }) {
+  return (
+    <div
+      role="group"
+      aria-label="Chart type"
+      className="inline-flex rounded-lg border border-zinc-300 p-0.5 dark:border-zinc-700"
+    >
+      {CHART_TYPES.map((type) => {
+        const selected = value === type.key;
+        return (
+          <button
+            key={type.key}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onChange(type.key)}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              selected
+                ? "bg-teal-600 text-white"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
+            }`}
+          >
+            {type.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ComparativeAnalysisTab({ data }) {
+  const [chartType, setChartType] = useState("line");
+  const Chart = chartType === "bar" ? BarChart : LineChart;
+
   const followUps = data.followUps ?? [];
 
   // Follow ups are stored newest-first; the trend reads oldest → newest.
@@ -85,9 +124,16 @@ export function ComparativeAnalysisTab({ data }) {
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          {sessions.length} follow up session{sessions.length === 1 ? "" : "s"} · one point per session
+        </p>
+        <ChartTypeToggle value={chartType} onChange={setChartType} />
+      </div>
+
       {sessions.length === 1 && (
         <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
-          Only one follow up session recorded so far. Add more sessions to see trend lines form.
+          Only one follow up session recorded so far. Add more sessions to see trends build.
         </p>
       )}
 
@@ -98,7 +144,7 @@ export function ComparativeAnalysisTab({ data }) {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {NUMERIC_CHARTS.map((chart) => (
             <ChartCard key={chart.title} title={chart.title}>
-              <LineChart
+              <Chart
                 points={points}
                 yMin={chart.min}
                 yMax={chart.max}
@@ -135,7 +181,7 @@ export function ComparativeAnalysisTab({ data }) {
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {group.rows.map((row) => (
                   <ChartCard key={row.key} title={row.label}>
-                    <LineChart
+                    <Chart
                       points={points}
                       yMin={0}
                       yMax={MECHANICAL_RESPONSE_LEVEL_OPTIONS.length - 1}
