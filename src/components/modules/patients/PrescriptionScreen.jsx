@@ -10,6 +10,7 @@ import { PatientInfoTab } from "@/components/modules/patients/PatientInfoTab";
 import { ComplaintTab } from "@/components/modules/patients/ComplaintTab";
 import { ExaminationTab } from "@/components/modules/patients/ExaminationTab";
 import { FollowUpTab } from "@/components/modules/patients/FollowUpTab";
+import { ComparativeAnalysisTab } from "@/components/modules/patients/ComparativeAnalysisTab";
 import { mergePrescriptionData } from "@/lib/prescriptionOptions";
 // DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
 // database is connected (see src/mock-data/README.md).
@@ -20,7 +21,12 @@ const TABS = [
   { key: "complaint", label: "Patient Complaint" },
   { key: "examination", label: "Examination" },
   { key: "followup", label: "Follow Up" },
+  { key: "comparative", label: "Comparative Analysis" },
 ];
+
+// Tabs that only present saved data — the "Save Prescription" action is
+// hidden on these.
+const READ_ONLY_TABS = new Set(["info", "comparative"]);
 
 function parseData(prescription) {
   if (!prescription?.data) return mergePrescriptionData(null);
@@ -119,7 +125,7 @@ export function PrescriptionScreen({ patient, prescription, isMockData = false }
             {savedAt ? `Last saved ${formatSavedAt(savedAt)}` : "Not saved yet"}
           </p>
         </div>
-        {activeTab !== "info" && (
+        {!READ_ONLY_TABS.has(activeTab) && (
           <Button type="button" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Prescription"}
           </Button>
@@ -134,11 +140,13 @@ export function PrescriptionScreen({ patient, prescription, isMockData = false }
         <ComplaintTab ref={complaintRef} patient={patientInfo} data={data} onChange={setData} />
       ) : activeTab === "examination" ? (
         <ExaminationTab ref={examinationRef} data={data} onChange={setData} />
-      ) : (
+      ) : activeTab === "followup" ? (
         <FollowUpTab data={data} onChange={setData} />
+      ) : (
+        <ComparativeAnalysisTab data={data} />
       )}
 
-      {activeTab !== "info" && (
+      {!READ_ONLY_TABS.has(activeTab) && (
         <div className="mt-8 flex justify-end border-t border-zinc-200 pt-6 dark:border-zinc-800">
           <Button type="button" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Prescription"}
