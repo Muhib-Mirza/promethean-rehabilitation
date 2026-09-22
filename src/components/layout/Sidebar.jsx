@@ -4,9 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navigation } from "@/config/navigation";
 import { HospitalIcon, XIcon } from "@/components/icons";
+import { isSuperAdmin } from "@/lib/auth/roles";
 
-export function Sidebar({ open, onClose, currentYear }) {
+export function Sidebar({ open, onClose, currentYear, user }) {
   const pathname = usePathname();
+  const visibleNavigation = navigation.filter(
+    (item) => !item.superadminOnly || isSuperAdmin(user)
+  );
 
   return (
     <>
@@ -39,7 +43,7 @@ export function Sidebar({ open, onClose, currentYear }) {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const isActive =
               item.href === "/"
                 ? pathname === "/"

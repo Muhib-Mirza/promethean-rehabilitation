@@ -44,7 +44,7 @@ export const MECHANICAL_RESPONSE_LEVEL_OPTIONS = [
 export const MECHANICAL_RESPONSE_GROUPS = [
   {
     key: "cervicalRepeated",
-    title: "Protraclum",
+    title: "Protraction",
     rows: [
       { key: "PRO", label: "PRO" },
       { key: "repPRO", label: "Rep PRO" },
@@ -257,7 +257,6 @@ export function mergeFollowUpEntry(saved) {
 export function emptyPrescriptionData() {
   return {
     date: "",
-    mrn: "",
     chiefComplaint: "",
     injuryGrade: "",
     duration: "",

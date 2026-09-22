@@ -22,11 +22,17 @@ export function SelectField({
         {...props}
       >
         <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
+        {options.map((option) => {
+          // Plain strings use the value as their own label; pass
+          // { value, label } entries when the two need to differ.
+          const value = typeof option === "object" ? option.value : option;
+          const text = typeof option === "object" ? option.label : option;
+          return (
+            <option key={value} value={value}>
+              {text}
+            </option>
+          );
+        })}
       </select>
       {error && (
         <span className="mt-1 block text-xs text-red-500">{error}</span>

@@ -8,6 +8,7 @@
  *
  * 🟢 You can import this file directly.
  */
+export type * from './models/User.ts'
 export type * from './models/Patient.ts'
 export type * from './models/Prescription.ts'
 export type * from './commonInputTypes.ts'

@@ -183,6 +183,25 @@ export function FileTextIcon(props) {
   );
 }
 
+export function ShieldIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3 4 6v5c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6Z" />
+      <path d="m9 12 2 2 4-4" />
+    </Icon>
+  );
+}
+
+export function LogOutIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </Icon>
+  );
+}
+
 export function BodyChartIcon(props) {
   return (
     <Icon {...props}>

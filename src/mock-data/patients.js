@@ -10,6 +10,7 @@ function calcBmi(heightCm, weightKg) {
 export const MOCK_PATIENTS = [
   {
     id: 900001,
+    mrn: "PR-11025-190798",
     firstName: "Ayesha",
     lastName: "Siddiqui",
     contactNumber: "03214567890",
@@ -30,6 +31,7 @@ export const MOCK_PATIENTS = [
   },
   {
     id: 900002,
+    mrn: "PR-11025-190799",
     firstName: "Bilal",
     lastName: "Ahmed",
     contactNumber: "03331234567",
@@ -49,7 +51,6 @@ export const MOCK_PATIENTS = [
 
 const ayeshaPrescriptionData = {
   date: "2026-06-01",
-  mrn: "PRC-2026-0142",
   chiefComplaint: "Chronic lower back pain radiating to left leg",
   injuryGrade: "III",
   duration: "8 weeks",
@@ -117,7 +118,6 @@ const ayeshaPrescriptionData = {
 
 const bilalPrescriptionData = {
   date: "2026-06-20",
-  mrn: "PRC-2026-0158",
   chiefComplaint: "Right shoulder pain after gym injury",
   injuryGrade: "II",
   duration: "3 weeks",

@@ -25,6 +25,7 @@ const CREATED_AT_FORMATTER = new Intl.DateTimeFormat("en-GB", {
 });
 
 const columns = [
+  { key: "mrn", header: "MRN" },
   {
     key: "name",
     header: "Name",

@@ -33,7 +33,6 @@ const isEmptyList = (value) => !Array.isArray(value) || value.length === 0;
 // validation focuses the first offending field.
 const REQUIRED_FIELDS = [
   { id: "complaint-date", message: "This field is required.", invalid: (d) => isBlank(d.date) },
-  { id: "complaint-mrn", message: "This field is required.", invalid: (d) => isBlank(d.mrn) },
   { id: "complaint-duration", message: "This field is required.", invalid: (d) => isBlank(d.duration) },
   { id: "complaint-symptoms", message: "This field is required.", invalid: (d) => isBlank(d.chiefComplaint) },
   { id: "complaint-injuryGrade", message: "Please select an option.", invalid: (d) => isBlank(d.injuryGrade) },
@@ -146,9 +145,13 @@ export function ComplaintTab({ ref, patient, data, onChange }) {
               {patient.bmi ? patient.bmi.toFixed(1) : "—"}
             </p>
           </div>
+          <div>
+            <span className="text-zinc-500 dark:text-zinc-400">MRN</span>
+            <p className="font-medium text-zinc-900 dark:text-zinc-50">{patient.mrn ?? "—"}</p>
+          </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField
             id="complaint-date"
             label="Date"
@@ -157,15 +160,6 @@ export function ComplaintTab({ ref, patient, data, onChange }) {
             error={errors["complaint-date"]}
             value={data.date}
             onChange={(e) => updateField("date", e.target.value)}
-          />
-          <TextField
-            id="complaint-mrn"
-            label="MRN"
-            required
-            error={errors["complaint-mrn"]}
-            value={data.mrn}
-            onChange={(e) => updateField("mrn", e.target.value)}
-            placeholder="Medical record no."
           />
           <TextField
             id="complaint-duration"
