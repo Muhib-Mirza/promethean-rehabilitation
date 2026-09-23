@@ -10,7 +10,7 @@ import {
   calculateBmi,
 } from "@/components/modules/patients/PatientInfoFields";
 
-export function PatientInfoTab({ patient, onSaved }) {
+export function PatientInfoTab({ patient, onSaved, canUpdate = true }) {
   const { showToast } = useToast();
   const [form, setForm] = useState(() => emptyPatientForm(patient));
   const [errors, setErrors] = useState({});
@@ -62,11 +62,13 @@ export function PatientInfoTab({ patient, onSaved }) {
     <div className="space-y-6">
       <PatientInfoFields form={form} errors={errors} onFieldChange={updateField} />
 
-      <div className="flex justify-end border-t border-zinc-200 pt-6 dark:border-zinc-800">
-        <Button type="button" onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save Patient Info"}
-        </Button>
-      </div>
+      {canUpdate && (
+        <div className="flex justify-end border-t border-zinc-200 pt-6 dark:border-zinc-800">
+          <Button type="button" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Patient Info"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

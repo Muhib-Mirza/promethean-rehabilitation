@@ -47,6 +47,31 @@ export { Prisma }
  */
 export type User = Prisma.UserModel
 /**
+ * Model Role
+ * 
+ */
+export type Role = Prisma.RoleModel
+/**
+ * Model Screen
+ * 
+ */
+export type Screen = Prisma.ScreenModel
+/**
+ * Model Action
+ * 
+ */
+export type Action = Prisma.ActionModel
+/**
+ * Model RolePermission
+ * 
+ */
+export type RolePermission = Prisma.RolePermissionModel
+/**
+ * Model UserRole
+ * 
+ */
+export type UserRole = Prisma.UserRoleModel
+/**
  * Model Patient
  * 
  */

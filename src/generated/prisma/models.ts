@@ -9,6 +9,11 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/User.ts'
+export type * from './models/Role.ts'
+export type * from './models/Screen.ts'
+export type * from './models/Action.ts'
+export type * from './models/RolePermission.ts'
+export type * from './models/UserRole.ts'
 export type * from './models/Patient.ts'
 export type * from './models/Prescription.ts'
 export type * from './commonInputTypes.ts'

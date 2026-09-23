@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth/guard";
+import { SCREENS, ACTIONS } from "@/lib/auth/screens";
 // DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
 // database is connected (see src/mock-data/README.md).
 import { DEMO_MODE_MESSAGE, isDbConnectionError } from "@/mock-data/isDbUnavailable";
 
+// Backs both the list's "Edit" action and the Patient Info tab's save
+// button (PatientInfoTab) — same form, same right: patients.info:update.
 export async function PUT(request, { params }) {
+  const guard = await requirePermission(SCREENS.PATIENTS_INFO, ACTIONS.UPDATE);
+  if (guard.error) return guard.error;
+
   const { id } = await params;
   const body = await request.json();
 
@@ -53,7 +60,12 @@ export async function PUT(request, { params }) {
   }
 }
 
+// Backs the list's "Body Chart" action — its own right, independent of
+// editing the patient's demographic info.
 export async function PATCH(request, { params }) {
+  const guard = await requirePermission(SCREENS.PATIENTS_BODYCHART, ACTIONS.UPDATE);
+  if (guard.error) return guard.error;
+
   const { id } = await params;
   const body = await request.json();
 
@@ -85,6 +97,9 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(_request, { params }) {
+  const guard = await requirePermission(SCREENS.PATIENTS, ACTIONS.DELETE);
+  if (guard.error) return guard.error;
+
   const { id } = await params;
 
   try {

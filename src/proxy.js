@@ -29,7 +29,8 @@ export function proxy(request) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  if (isAuthenticated && pathname.startsWith("/users") && session.role !== ROLES.SUPERADMIN) {
+  const isSuperAdminOnlyPath = pathname.startsWith("/users") || pathname.startsWith("/roles");
+  if (isAuthenticated && isSuperAdminOnlyPath && session.role !== ROLES.SUPERADMIN) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 

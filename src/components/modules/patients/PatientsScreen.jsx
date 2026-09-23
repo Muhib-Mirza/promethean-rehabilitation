@@ -10,6 +10,8 @@ import { AddPatientButton } from "@/components/modules/patients/AddPatientButton
 import { PatientFormModal } from "@/components/modules/patients/PatientFormModal";
 import { BodyChartModal } from "@/components/modules/patients/BodyChartModal";
 import { useToast } from "@/components/ui/Toast";
+import { canAccess } from "@/lib/auth/permissionSet";
+import { SCREENS, ACTIONS } from "@/lib/auth/screens";
 // DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
 // database is connected (see src/mock-data/README.md).
 import { DemoModeBanner } from "@/mock-data/DemoModeBanner";
@@ -51,8 +53,15 @@ const columns = [
   },
 ];
 
-export function PatientsScreen({ patients, isMockData = false }) {
+export function PatientsScreen({ patients, isMockData = false, permissions }) {
   const router = useRouter();
+  const canCreate = canAccess(permissions, SCREENS.PATIENTS, ACTIONS.CREATE);
+  const canDelete = canAccess(permissions, SCREENS.PATIENTS, ACTIONS.DELETE);
+  // "Edit" opens the same form/endpoint as the Patient Info tab on the
+  // detail page, and "Body Chart" is its own screen — each carries its own
+  // right rather than sharing one generic "patients:update".
+  const canEditInfo = canAccess(permissions, SCREENS.PATIENTS_INFO, ACTIONS.UPDATE);
+  const canEditBodyChart = canAccess(permissions, SCREENS.PATIENTS_BODYCHART, ACTIONS.UPDATE);
   const { showToast } = useToast();
   const [isRefreshing, startRefresh] = useTransition();
   const [editingPatient, setEditingPatient] = useState(null);
@@ -85,23 +94,23 @@ export function PatientsScreen({ patients, isMockData = false }) {
   }
 
   const actions = [
-    {
+    canEditInfo && {
       label: "Edit",
       icon: PencilIcon,
       onClick: (row) => setEditingPatient(row),
     },
-    {
+    canEditBodyChart && {
       label: "Body Chart",
       icon: BodyChartIcon,
       onClick: (row) => setBodyChartPatient(row),
     },
-    {
+    canDelete && {
       label: "Delete",
       icon: TrashIcon,
       variant: "danger",
       onClick: (row) => setDeletingPatient(row),
     },
-  ];
+  ].filter(Boolean);
 
   return (
     <div>
@@ -110,7 +119,7 @@ export function PatientsScreen({ patients, isMockData = false }) {
       <PageHeader
         title="Patients"
         description="Manage patient records, intake, and rehabilitation history."
-        action={<AddPatientButton onSaved={refresh} />}
+        action={canCreate ? <AddPatientButton onSaved={refresh} /> : null}
       />
 
       <DataGrid

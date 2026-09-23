@@ -14,14 +14,87 @@ datasource db {
 // src/lib/auth) — STAFF accounts can sign in and use the app but can't
 // manage other accounts.
 model User {
-  id           Int      @id @default(autoincrement())
-  username     String   @unique
+  id           Int        @id @default(autoincrement())
+  username     String     @unique
   passwordHash String
   role         String // "SUPERADMIN" | "STAFF"
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  userRoles    UserRole[]
 
   @@map("Users")
+}
+
+// Fine-grained, per-screen/per-action rights layered on top of the fixed
+// SUPERADMIN/STAFF flag above. A SUPERADMIN bypasses this system entirely
+// (see isSuperAdmin/hasPermission in src/lib/auth) — Role/RolePermission
+// only governs what a STAFF user can view/create/update/delete once one or
+// more Roles are assigned to them via UserRole. See sql/rbac-permissions.sql
+// for the matching raw-SQL setup script and the stored procedure used to
+// grant new rights later.
+model Role {
+  id          Int              @id @default(autoincrement()) @map("Id")
+  name        String           @unique @map("Name")
+  description String?          @map("Description")
+  createdAt   DateTime         @default(now()) @map("CreatedAt")
+  updatedAt   DateTime         @updatedAt @map("UpdatedAt")
+  permissions RolePermission[]
+  userRoles   UserRole[]
+
+  @@map("Roles")
+}
+
+// A screen or a tab within a screen (via parentId) — e.g. "patients" and
+// "patients.complaint". Code is what app code checks against and must stay
+// stable even if Name changes.
+model Screen {
+  id          Int              @id @default(autoincrement()) @map("Id")
+  code        String           @unique @map("Code")
+  name        String           @map("Name")
+  parentId    Int?             @map("ParentId")
+  parent      Screen?          @relation("ScreenParent", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children    Screen[]         @relation("ScreenParent")
+  sortOrder   Int              @default(0) @map("SortOrder")
+  permissions RolePermission[]
+
+  @@map("Screens")
+}
+
+// A grantable operation: view / create / update / delete.
+model Action {
+  id          Int              @id @default(autoincrement()) @map("Id")
+  code        String           @unique @map("Code")
+  name        String           @map("Name")
+  permissions RolePermission[]
+
+  @@map("Actions")
+}
+
+// The rights matrix: one row per (role, screen, action).
+model RolePermission {
+  id        Int     @id @default(autoincrement()) @map("Id")
+  roleId    Int     @map("RoleId")
+  screenId  Int     @map("ScreenId")
+  actionId  Int     @map("ActionId")
+  isAllowed Boolean @default(true) @map("IsAllowed")
+  role      Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  screen    Screen  @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  action    Action  @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, screenId, actionId], map: "UQ_RolePermissions")
+  @@map("RolePermissions")
+}
+
+// Assigns a Role to a User. Many-to-many so one role can be assigned to
+// many users, and (for flexibility) a user could hold more than one role.
+model UserRole {
+  userId Int  @map("UserId")
+  roleId Int  @map("RoleId")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId], map: "PK_UserRoles")
+  @@map("UserRoles")
 }
 
 model Patient {

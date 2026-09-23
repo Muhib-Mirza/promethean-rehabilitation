@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 
-export function DashboardShell({ children, currentYear, user }) {
+export function DashboardShell({ children, currentYear, user, permissions }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -14,6 +14,7 @@ export function DashboardShell({ children, currentYear, user }) {
         onClose={() => setSidebarOpen(false)}
         currentYear={currentYear}
         user={user}
+        permissions={permissions}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">

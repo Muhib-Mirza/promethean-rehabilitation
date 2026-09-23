@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { PatientsScreen } from "@/components/modules/patients/PatientsScreen";
+import { requireScreenView } from "@/lib/auth/guard";
+import { getUserPermissions } from "@/lib/auth/permissions";
+import { SCREENS } from "@/lib/auth/screens";
 // DEMO-DATA FALLBACK — remove this import along with src/mock-data/ once a
 // real database is connected (see src/mock-data/README.md).
 import { MOCK_PATIENTS } from "@/mock-data/patients";
@@ -14,6 +17,9 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  const user = await requireScreenView(SCREENS.PATIENTS);
+  const permissions = await getUserPermissions(user);
+
   let patients;
   let isMockData = false;
 
@@ -34,5 +40,5 @@ export default async function Page() {
     }));
   }
 
-  return <PatientsScreen patients={patients} isMockData={isMockData} />;
+  return <PatientsScreen patients={patients} isMockData={isMockData} permissions={permissions} />;
 }

@@ -12,20 +12,23 @@ import { ExaminationTab } from "@/components/modules/patients/ExaminationTab";
 import { FollowUpTab } from "@/components/modules/patients/FollowUpTab";
 import { ComparativeAnalysisTab } from "@/components/modules/patients/ComparativeAnalysisTab";
 import { mergePrescriptionData } from "@/lib/prescriptionOptions";
+import { canAccess } from "@/lib/auth/permissionSet";
+import { SCREENS, ACTIONS } from "@/lib/auth/screens";
 // DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
 // database is connected (see src/mock-data/README.md).
 import { DemoModeBanner } from "@/mock-data/DemoModeBanner";
 
 const TABS = [
-  { key: "info", label: "Patient Info" },
-  { key: "complaint", label: "Patient Complaint" },
-  { key: "examination", label: "Examination" },
-  { key: "followup", label: "Follow Up" },
-  { key: "comparative", label: "Comparative Analysis" },
+  { key: "info", label: "Patient Info", screenCode: SCREENS.PATIENTS_INFO },
+  { key: "complaint", label: "Patient Complaint", screenCode: SCREENS.PATIENTS_COMPLAINT },
+  { key: "examination", label: "Examination", screenCode: SCREENS.PATIENTS_EXAMINATION },
+  { key: "followup", label: "Follow Up", screenCode: SCREENS.PATIENTS_FOLLOWUP },
+  { key: "comparative", label: "Comparative Analysis", screenCode: SCREENS.PATIENTS_COMPARATIVE },
 ];
 
 // Tabs that only present saved data — the "Save Prescription" action is
-// hidden on these.
+// hidden on these regardless of the update right (Patient Info has its own
+// save button; Comparative Analysis has none).
 const READ_ONLY_TABS = new Set(["info", "comparative"]);
 
 function parseData(prescription) {
@@ -56,10 +59,11 @@ function formatSavedAt(savedAt) {
   return SAVED_AT_FORMATTER.format(new Date(savedAt));
 }
 
-export function PrescriptionScreen({ patient, prescription, isMockData = false }) {
+export function PrescriptionScreen({ patient, prescription, isMockData = false, permissions }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState("complaint");
+  const visibleTabs = TABS.filter((tab) => canAccess(permissions, tab.screenCode, ACTIONS.VIEW));
+  const [activeTab, setActiveTab] = useState(() => visibleTabs[0]?.key ?? "info");
   const [patientInfo, setPatientInfo] = useState(patient);
   const [data, setData] = useState(() => parseData(prescription));
   const [savedAt, setSavedAt] = useState(prescription?.updatedAt ?? null);
@@ -106,6 +110,12 @@ export function PrescriptionScreen({ patient, prescription, isMockData = false }
     }
   }
 
+  const activeTabDef = visibleTabs.find((tab) => tab.key === activeTab);
+  const canSave =
+    activeTabDef &&
+    !READ_ONLY_TABS.has(activeTab) &&
+    canAccess(permissions, activeTabDef.screenCode, ACTIONS.UPDATE);
+
   return (
     <div>
       {isMockData && <DemoModeBanner />}
@@ -125,17 +135,25 @@ export function PrescriptionScreen({ patient, prescription, isMockData = false }
             {savedAt ? `Last saved ${formatSavedAt(savedAt)}` : "Not saved yet"}
           </p>
         </div>
-        {!READ_ONLY_TABS.has(activeTab) && (
+        {canSave && (
           <Button type="button" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Prescription"}
           </Button>
         )}
       </div>
 
-      <Tabs tabs={TABS} activeKey={activeTab} onChange={setActiveTab} className="mb-6" />
+      <Tabs tabs={visibleTabs} activeKey={activeTab} onChange={setActiveTab} className="mb-6" />
 
-      {activeTab === "info" ? (
-        <PatientInfoTab patient={patientInfo} onSaved={handlePatientSaved} />
+      {!activeTabDef ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          You don&apos;t have access to any tabs on this patient record.
+        </p>
+      ) : activeTab === "info" ? (
+        <PatientInfoTab
+          patient={patientInfo}
+          onSaved={handlePatientSaved}
+          canUpdate={canAccess(permissions, SCREENS.PATIENTS_INFO, ACTIONS.UPDATE)}
+        />
       ) : activeTab === "complaint" ? (
         <ComplaintTab ref={complaintRef} patient={patientInfo} data={data} onChange={setData} />
       ) : activeTab === "examination" ? (
@@ -146,7 +164,7 @@ export function PrescriptionScreen({ patient, prescription, isMockData = false }
         <ComparativeAnalysisTab data={data} />
       )}
 
-      {!READ_ONLY_TABS.has(activeTab) && (
+      {canSave && (
         <div className="mt-8 flex justify-end border-t border-zinc-200 pt-6 dark:border-zinc-800">
           <Button type="button" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Prescription"}

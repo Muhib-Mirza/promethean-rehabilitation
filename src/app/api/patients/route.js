@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { nextMrn } from "@/lib/mrn";
+import { requirePermission } from "@/lib/auth/guard";
+import { SCREENS, ACTIONS } from "@/lib/auth/screens";
 // DEMO-DATA FALLBACK — remove along with src/mock-data/ once a real
 // database is connected (see src/mock-data/README.md).
 import { MOCK_PATIENTS } from "@/mock-data/patients";
@@ -12,6 +14,9 @@ import { DEMO_MODE_MESSAGE, isDbConnectionError } from "@/mock-data/isDbUnavaila
 const MAX_MRN_ATTEMPTS = 3;
 
 export async function GET() {
+  const guard = await requirePermission(SCREENS.PATIENTS, ACTIONS.VIEW);
+  if (guard.error) return guard.error;
+
   try {
     const patients = await prisma.patient.findMany({
       orderBy: { createdAt: "desc" },
@@ -31,6 +36,9 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  const guard = await requirePermission(SCREENS.PATIENTS, ACTIONS.CREATE);
+  if (guard.error) return guard.error;
+
   const body = await request.json();
 
   for (let attempt = 1; attempt <= MAX_MRN_ATTEMPTS; attempt++) {

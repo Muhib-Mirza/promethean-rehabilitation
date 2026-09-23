@@ -28,7 +28,16 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* React warns in dev about rendering <script> tags; per
+            node_modules/next/dist/docs/01-app/02-guides/preventing-flash-before-hydration.md,
+            using text/plain on the client (it never re-runs post-hydration
+            anyway) plus suppressHydrationWarning silences that without
+            affecting the synchronous run during initial HTML parsing. */}
+        <script
+          type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+        />
       </head>
       <body
         className="min-h-full flex flex-col"

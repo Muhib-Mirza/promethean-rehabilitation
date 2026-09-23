@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { PrescriptionScreen } from "@/components/modules/patients/PrescriptionScreen";
+import { requireScreenView } from "@/lib/auth/guard";
+import { getUserPermissions } from "@/lib/auth/permissions";
+import { SCREENS } from "@/lib/auth/screens";
 // DEMO-DATA FALLBACK — remove this import along with src/mock-data/ once a
 // real database is connected (see src/mock-data/README.md).
 import { getMockPatientById, MOCK_PRESCRIPTIONS } from "@/mock-data/patients";
@@ -15,6 +18,9 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function Page({ params }) {
+  const user = await requireScreenView(SCREENS.PATIENTS);
+  const permissions = await getUserPermissions(user);
+
   const { id } = await params;
   const patientId = Number(id);
   if (!Number.isInteger(patientId)) notFound();
@@ -45,6 +51,7 @@ export default async function Page({ params }) {
           : null
       }
       isMockData={isMockData}
+      permissions={permissions}
     />
   );
 }

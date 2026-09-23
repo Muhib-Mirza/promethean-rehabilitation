@@ -5,12 +5,16 @@ import { usePathname } from "next/navigation";
 import { navigation } from "@/config/navigation";
 import { HospitalIcon, XIcon } from "@/components/icons";
 import { isSuperAdmin } from "@/lib/auth/roles";
+import { ACTIONS } from "@/lib/auth/screens";
+import { canAccess } from "@/lib/auth/permissionSet";
 
-export function Sidebar({ open, onClose, currentYear, user }) {
+export function Sidebar({ open, onClose, currentYear, user, permissions }) {
   const pathname = usePathname();
-  const visibleNavigation = navigation.filter(
-    (item) => !item.superadminOnly || isSuperAdmin(user)
-  );
+  const visibleNavigation = navigation.filter((item) => {
+    if (item.superadminOnly) return isSuperAdmin(user);
+    if (item.screenCode) return canAccess(permissions, item.screenCode, ACTIONS.VIEW);
+    return true;
+  });
 
   return (
     <>
